@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daily Status Reporter</title>
+<style>
+  :root {
+    --bg:#f3f5fb; --card:#fff; --text:#1f2937; --muted:#6b7280; --line:#e5e7eb;
+    --primary:#4472c4; --primary-d:#2f56a0; --ok:#16a34a; --danger:#dc2626;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0f1420; --card:#181f2e; --text:#e5e7eb; --muted:#9ca3af; --line:#2a3347; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 system-ui,Segoe UI,Roboto,sans-serif; }
+  header { background:linear-gradient(135deg,#4472c4,#2f56a0); color:#fff; padding:28px 16px; }
+  header h1 { margin:0 auto; max-width:1100px; font-size:24px; }
+  header p { margin:4px auto 0; max-width:1100px; opacity:.85; }
+  main { max-width:1100px; margin:20px auto; padding:0 16px 60px; display:grid; gap:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+  .card h2 { margin:0 0 12px; font-size:16px; }
+  label { display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:4px; }
+  input, textarea { width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background:transparent; color:var(--text); font:inherit; }
+  input:focus, textarea:focus { outline:2px solid var(--primary); border-color:transparent; }
+  .grid { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); }
+  .row-form { display:grid; gap:12px; grid-template-columns:150px 1fr 1fr 90px; }
+  .row-form .desc { grid-column:1 / -1; }
+  @media (max-width:700px){ .row-form { grid-template-columns:1fr 1fr; } }
+  button { cursor:pointer; border:0; border-radius:8px; padding:10px 16px; font:inherit; font-weight:600; background:var(--primary); color:#fff; }
+  button:hover { background:var(--primary-d); }
+  button.ghost { background:transparent; color:var(--primary); border:1px solid var(--line); }
+  button.danger { background:transparent; color:var(--danger); padding:4px 8px; }
+  .actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; align-items:center; }
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; }
+  th { background:var(--primary); color:#fff; text-align:left; padding:8px 10px; font-size:13px; }
+  td { padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  td.h { text-align:center; white-space:nowrap; }
+  .empty { color:var(--muted); text-align:center; padding:20px; }
+  .total { margin-left:auto; font-weight:700; }
+  #status { font-size:14px; }
+  .ok { color:var(--ok); } .err { color:var(--danger); }
+  small { color:var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>📋 Daily Status Reporter</h1>
+  <p>Add your tasks, then post them to your Google Chat space as one neat card.</p>
+</header>
+
+<main>
+  <section class="card">
+    <h2>1 · Setup</h2>
+    <div class="grid">
+      <div>
+        <label for="name">Your name</label>
+        <input id="name" placeholder="e.g. Balveer Choudhary">
+      </div>
+      <div>
+        <label for="hook">Google Chat webhook URL</label>
+        <input id="hook" type="password" placeholder="https://chat.googleapis.com/v1/spaces/…">
+      </div>
+    </div>
+    <small>Both are saved only in this browser (localStorage). The webhook URL is never sent anywhere except Google Chat.</small>
+  </section>
+
+  <section class="card">
+    <h2>2 · Add a task</h2>
+    <form id="form" class="row-form">
+      <div><label for="date">Date</label><input id="date" type="date" required></div>
+      <div><label for="ctx">Task context</label><input id="ctx" placeholder="Sprint-148" list="ctxList"></div>
+      <div><label for="sub">Task sub context</label><input id="sub" placeholder="CTCR-183"></div>
+      <div><label for="hrs">Hours</label><input id="hrs" type="number" step="0.25" min="0" value="1" required></div>
+      <div class="desc"><label for="desc">Description</label><textarea id="desc" rows="2" required placeholder="What did you work on?"></textarea></div>
+      <div class="actions" style="grid-column:1/-1;margin-top:0">
+        <button type="submit">＋ Add task</button>
+        <button type="button" class="ghost" id="paste">Paste rows from Excel</button>
+      </div>
+    </form>
+    <datalist id="ctxList"></datalist>
+  </section>
+
+  <section class="card">
+    <h2>3 · Tasks to send</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Date</th><th>Task context</th><th>Task sub context</th><th>Description</th><th>Hours</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="actions">
+      <button id="send">📤 Send to Google Chat</button>
+      <button class="ghost" id="clear">Clear all</button>
+      <span id="status"></span>
+      <span class="total" id="total"></span>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+let tasks = store.get('tasks', []);
+$('name').value = store.get('name', '');
+const DEFAULT_HOOK = 'https://chat.googleapis.com/v1/spaces/AAQAl_LK3eY/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=nF6dHZ_NdJ0gRwpx7rRT97sHLbNnljKjs4WsHpB6brI';
+$('hook').value = store.get('hook', '') || DEFAULT_HOOK;
+$('date').valueAsDate = new Date();
+$('name').oninput = e => store.set('name', e.target.value.trim());
+$('hook').oninput = e => store.set('hook', e.target.value.trim());
+
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const fmtDate = iso => {            // 2026-09-01 -> 01-Sep-2026
+  const [y, m, d] = iso.split('-');
+  return MON[+m - 1] ? `${d}-${MON[+m - 1]}-${y}` : iso;
+};
+const parseDate = s => {            // accepts 01-Sep-2026 or ISO
+  s = s.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m = s.match(/^(\d{1,2})[-\/ ]([A-Za-z]{3})[a-z]*[-\/ ](\d{4})$/);
+  if (m) { const i = MON.findIndex(x => x.toLowerCase() === m[2].toLowerCase()); if (i >= 0) return `${m[3]}-${String(i+1).padStart(2,'0')}-${m[1].padStart(2,'0')}`; }
+  return null;
+};
+
+function render() {
+  store.set('tasks', tasks);
+  const tb = $('rows');
+  tb.innerHTML = tasks.length ? '' : '<tr><td colspan="6" class="empty">No tasks yet — add one above.</td></tr>';
+  tasks.forEach((t, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${fmtDate(t.date)}</td><td>${esc(t.ctx)}</td><td>${esc(t.sub)}</td><td>${esc(t.desc)}</td><td class="h">${t.hrs}</td><td><button class="danger" title="Remove">✕</button></td>`;
+    tr.querySelector('button').onclick = () => { tasks.splice(i, 1); render(); };
+    tb.appendChild(tr);
+  });
+  const sum = tasks.reduce((a, t) => a + t.hrs, 0);
+  $('total').textContent = tasks.length ? `Total: ${sum} h` : '';
+  const ctxs = [...new Set(tasks.map(t => t.ctx).filter(Boolean))];
+  $('ctxList').innerHTML = ctxs.map(c => `<option value="${esc(c)}">`).join('');
+}
+
+$('form').onsubmit = e => {
+  e.preventDefault();
+  tasks.push({ date: $('date').value, ctx: $('ctx').value.trim(), sub: $('sub').value.trim(),
+               desc: $('desc').value.trim(), hrs: parseFloat($('hrs').value) || 0 });
+  $('sub').value = ''; $('desc').value = '';
+  render(); $('desc').focus();
+};
+$('clear').onclick = () => { if (tasks.length && confirm('Remove all tasks?')) { tasks = []; render(); } };
+
+$('paste').onclick = async () => {
+  let text = '';
+  try { text = await navigator.clipboard.readText(); } catch { text = prompt('Paste tab-separated rows (Date, Context, Sub context, Description, Hours):') || ''; }
+  let added = 0;
+  text.split(/\r?\n/).forEach(line => {
+    const c = line.split('\t');
+    if (c.length < 5) return;
+    const date = parseDate(c[0]); const hrs = parseFloat(c[4]);
+    if (!date || isNaN(hrs)) return;            // skips header / bad rows
+    tasks.push({ date, ctx: c[1].trim(), sub: c[2].trim(), desc: c[3].trim(), hrs }); added++;
+  });
+  setStatus(added ? `Added ${added} row(s).` : 'No valid rows found in clipboard.', added ? 'ok' : 'err');
+  render();
+};
+
+function setStatus(msg, cls) { const s = $('status'); s.textContent = msg; s.className = cls || ''; }
+
+// ---- Google Chat card ----
+function buildCards(name, list) {
+  const byDate = {};
+  list.forEach(t => (byDate[t.date] ||= []).push(t));
+  const dates = Object.keys(byDate).sort();
+  const grand = list.reduce((a, t) => a + t.hrs, 0);
+  const PER_MSG = 4;                              // dates per message keeps payload small
+  const msgs = [];
+  for (let i = 0; i < dates.length; i += PER_MSG) {
+    const chunk = dates.slice(i, i + PER_MSG);
+    const first = i === 0;
+    const sections = chunk.map(d => {
+      const items = byDate[d];
+      const day = items.reduce((a, t) => a + t.hrs, 0);
+      return {
+        header: `📅 ${fmtDate(d)}  ·  ${day} h`,
+        collapsible: false,
+        widgets: items.map(t => ({
+          decoratedText: {
+            topLabel: [t.ctx, t.sub].filter(Boolean).join('  ›  ') || 'General',
+            text: esc(t.desc),
+            wrapText: true,
+            bottomLabel: `⏱ ${t.hrs} h`
+          }
+        }))
+      };
+    });
+    const card = {
+      header: first
+        ? { title: `📋 Status Update — ${name}`, subtitle: `${fmtDate(dates[0])} → ${fmtDate(dates[dates.length-1])}  ·  ${grand} h total  ·  ${list.length} tasks` }
+        : { title: `📋 ${name} (continued)` },
+      sections
+    };
+    msgs.push({ text: first ? `*${name}* shared a status update` : undefined, cardsV2: [{ cardId: 'status-' + i, card }] });
+  }
+  return msgs;
+}
+
+$('send').onclick = async () => {
+  const name = $('name').value.trim(), hook = $('hook').value.trim();
+  if (!name) return setStatus('Enter your name.', 'err');
+  if (!/^https:\/\/chat\.googleapis\.com\//.test(hook)) return setStatus('Enter a valid Google Chat webhook URL.', 'err');
+  if (!tasks.length) return setStatus('Add at least one task.', 'err');
+  const msgs = buildCards(name, tasks);
+  $('send').disabled = true;
+  try {
+    for (let i = 0; i < msgs.length; i++) {
+      setStatus(`Sending ${i + 1}/${msgs.length}…`);
+      // text/plain keeps this a "simple" request (no CORS preflight); Chat still parses the JSON body.
+      await fetch(hook, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify(msgs[i]) });
+      if (i < msgs.length - 1) await new Promise(r => setTimeout(r, 1200)); // space quota: 1 req/sec
+    }
+    setStatus('Sent! Check your Chat space. (Browsers hide the reply, so verify there.)', 'ok');
+  } catch (e) {
+    setStatus('Network error: ' + e.message, 'err');
+  } finally { $('send').disabled = false; }
+};
+
+render();
+</script>
+</body>
+</html>
