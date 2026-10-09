@@ -93,9 +93,31 @@
   #toast.ok { background:#166534; } #toast.err { background:#b91c1c; }
   #toast button { min-height:30px; padding:0 10px; background:rgba(255,255,255,.2); }
   .more { width:100%; }
+  .gi { width:20px; height:20px; vertical-align:-5px; flex:0 0 auto; }
+  .r3 { display:grid; grid-template-columns:128px 1fr auto; gap:6px; align-items:center; }
+  .r3 input[type=date] { font-size:14px; padding:8px 4px; min-width:0; }
+  .r2d { display:grid; grid-template-columns:1fr auto; gap:6px; align-items:center; }
+  .step { display:flex; align-items:center; background:var(--soft); border-radius:10px; }
+  .step button { min-width:36px; min-height:42px; padding:0; background:transparent; color:var(--primary); font-size:22px; }
+  .step input { width:40px; min-height:42px; border:0; padding:0; text-align:center; font-weight:700; background:transparent; pointer-events:none; }
+  .pill { display:inline-flex; margin:0; cursor:pointer; }
+  .pill input { display:none; }
+  .pill span { display:inline-flex; align-items:center; gap:6px; min-height:40px; padding:0 12px; border-radius:99px; border:2px solid var(--line); font-size:14px; font-weight:600; color:var(--muted); }
+  .pill .gi { filter:grayscale(1); opacity:.55; }
+  .pill input:checked + span { border-color:#00ac47; background:var(--green); color:var(--text); }
+  .pill input:checked + span .gi { filter:none; opacity:1; }
+  .pill.daily input:checked + span { border-color:var(--primary); background:var(--soft); }
+  .tg.chat input:checked + span { background:var(--green); box-shadow:inset 0 0 0 2px #00ac47; }
+  .tg.chat .gi { filter:grayscale(1); } .tg.chat input:checked + span .gi { filter:none; }
+  .armed { background:var(--danger) !important; color:#fff !important; }
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="gchat" viewBox="0 0 24 24">
+  <path d="M6 2h12a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4h-7l-5 4v-4a4 4 0 0 1-4-4V6a4 4 0 0 1 4-4z" fill="#00ac47"/>
+  <path d="M2 14a4 4 0 0 0 4 4v4l5-4H6a4 4 0 0 1-4-4z" fill="#00832d"/>
+  <rect x="7" y="7" width="10" height="2.2" rx="1.1" fill="#fff"/><rect x="7" y="11" width="6.5" height="2.2" rx="1.1" fill="#fff"/>
+</symbol></svg>
 <header>
   <h1>📋 Daily Status</h1>
   <small id="who"></small>
@@ -107,17 +129,13 @@
   <section class="card">
     <form id="form" class="fgrid" autocomplete="off">
       <textarea id="desc" rows="2" placeholder="What did you work on?" enterkeyhint="done" required></textarea>
-      <div class="grid2">
+      <div class="r3">
         <input id="date" type="date" aria-label="Date">
-        <input id="sub" placeholder="Sub task (AVID-50)" list="subList" aria-label="Sub task">
-      </div>
-      <div class="chips" id="chips">
-        <button type="button" class="chip" data-h="0.5">0.5</button><button type="button" class="chip" data-h="1">1</button>
-        <button type="button" class="chip" data-h="2">2</button><button type="button" class="chip" data-h="3">3</button>
-        <input id="hrs" type="number" inputmode="decimal" step="0.25" min="0" value="1" placeholder="custom" aria-label="Hours">
+        <input id="sub" placeholder="Sub task" list="subList" aria-label="Sub task">
+        <div class="step"><button type="button" id="hMinus" aria-label="Less">−</button><input id="hrs" value="0.5" readonly aria-label="Hours"><button type="button" id="hPlus" aria-label="More">+</button></div>
       </div>
       <div class="frow">
-        <label class="chk"><input type="checkbox" id="chat" checked> Send to Chat</label>
+        <label class="pill"><input type="checkbox" id="chat" checked><span><svg class="gi"><use href="#gchat"/></svg> Send to Chat</span></label>
         <button type="submit">＋ Add task</button>
       </div>
       <div id="hint"></div>
@@ -132,19 +150,17 @@
 
   <details class="card" id="defsBox">
     <summary>🔁 Daily defaults <small class="m" style="font-weight:400">— recurring tasks like meetings</small></summary>
-    <div class="dhead"><span>Description</span><span class="c2">Sub</span><span class="c3">Hrs</span><span class="c4" title="Add every weekday">🔁</span><span class="c5" title="Send to Chat">💬</span><span class="c6"></span></div>
+    <div class="dhead"><span>Description</span><span class="c2">Sub</span><span class="c3">Hrs</span><span class="c4" title="Add every weekday">🔁</span><span class="c5" title="Send to Chat"><svg class="gi"><use href="#gchat"/></svg></span><span class="c6"></span></div>
     <div id="defs"></div>
     <form id="dForm" class="fgrid" style="margin-top:12px;padding-top:12px;border-top:2px solid var(--line)" autocomplete="off">
       <input id="dDesc" placeholder="New default, e.g. Participated in Daily Scrum" required>
-      <input id="dSub" placeholder="Sub task (optional)">
-      <div class="chips" id="dChips">
-        <button type="button" class="chip" data-h="0.5">0.5</button><button type="button" class="chip" data-h="1">1</button>
-        <button type="button" class="chip" data-h="2">2</button><button type="button" class="chip" data-h="3">3</button>
-        <input id="dHrs" type="number" inputmode="decimal" step="0.25" min="0" value="0.5" placeholder="custom" aria-label="Hours">
+      <div class="r2d">
+        <input id="dSub" placeholder="Sub task (optional)">
+        <div class="step"><button type="button" id="dMinus" aria-label="Less">−</button><input id="dHrs" value="0.5" readonly aria-label="Hours"><button type="button" id="dPlus" aria-label="More">+</button></div>
       </div>
       <div class="frow">
-        <label class="chk"><input type="checkbox" id="dOn" checked> Add every weekday</label>
-        <label class="chk"><input type="checkbox" id="dChat" checked> Send to Chat</label>
+        <label class="pill daily"><input type="checkbox" id="dOn" checked><span>🔁 Every weekday</span></label>
+        <label class="pill"><input type="checkbox" id="dChat" checked><span><svg class="gi"><use href="#gchat"/></svg> Send to Chat</span></label>
       </div>
       <button type="submit">＋ Add default</button>
     </form>
@@ -177,7 +193,7 @@
 <div id="toast"><span id="tmsg"></span><button id="tact" hidden>Undo</button></div>
 <div class="dock">
   <button id="dl" class="ghost">⬇ Timesheet</button>
-  <button id="send">📤 Send today to Chat</button>
+  <button id="send"><svg class="gi"><use href="#gchat"/></svg> Send today to Chat</button>
 </div>
 
 <script>
@@ -237,14 +253,17 @@ $('setSave').onclick = () => {
 };
 
 // ---------- shared helpers ----------
-function wireChips(boxId, inputId) {
-  const box = $(boxId), inp = $(inputId);
-  const sync = () => box.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', +c.dataset.h === parseFloat(inp.value)));
-  box.onclick = e => { const c = e.target.closest('.chip'); if (c) { inp.value = c.dataset.h; sync(); } };
-  inp.addEventListener('input', sync); sync();
-  return sync;
+const STEPS = [0.5, 1, 2, 3];       // hours stepper: 0.5 → 1 → 2 → 3 (max)
+function wireStepper(minusId, plusId, inputId) {
+  const inp = $(inputId);
+  const move = dir => {
+    const c = parseFloat(inp.value) || 0;
+    const v = dir > 0 ? STEPS.find(x => x > c) : [...STEPS].reverse().find(x => x < c);
+    if (v !== undefined) inp.value = v;
+  };
+  $(minusId).onclick = () => move(-1); $(plusId).onclick = () => move(1);
 }
-const syncHrs = wireChips('chips', 'hrs'), syncDHrs = wireChips('dChips', 'dHrs');
+wireStepper('hMinus', 'hPlus', 'hrs'); wireStepper('dMinus', 'dPlus', 'dHrs');
 function autosize(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 2 + 'px'; }
 
 // ---------- add task ----------
@@ -255,7 +274,7 @@ $('date').onchange = refreshForm;
 $('sub').onchange = () => {     // reuse the last entry for this sub task
   const v = $('sub').value.trim(); if (!v || $('desc').value.trim()) return;
   const t = [...S.tasks].reverse().find(x => x.sub === v && !x.def); if (!t) return;
-  $('desc').value = t.desc; $('hrs').value = t.hrs; syncHrs(); autosize($('desc'));
+  $('desc').value = t.desc; $('hrs').value = t.hrs; autosize($('desc'));
 };
 function refreshForm() {
   const subs = [], seen = new Set();
@@ -323,7 +342,7 @@ function updateTotals() {
   const ym = $('month').value || TODAY.slice(0, 7);
   $('mtotal').textContent = sum(S.tasks.filter(t => t.date.startsWith(ym))) + ' h';
   const n = S.tasks.filter(t => t.date === TODAY && t.desc.trim() && sentFlag(t)).length;
-  $('send').textContent = `📤 Send today to Chat (${n})`;
+  $('send').innerHTML = `<svg class="gi"><use href="#gchat"/></svg> Send today to Chat (${n})`;
 }
 const days = $('days');
 days.addEventListener('input', e => {
@@ -409,7 +428,7 @@ function renderDefs() {
     <input data-k="sub" value="${esc(d.sub)}" placeholder="Sub" aria-label="Sub task">
     <input data-k="hrs" type="number" inputmode="decimal" step="0.25" min="0" value="${d.hrs}" aria-label="Hours">
     <label class="tg" title="Add every weekday"><input type="checkbox" data-k="on" ${d.on ? 'checked' : ''}><span>🔁</span></label>
-    <label class="tg" title="Send to Chat"><input type="checkbox" data-k="chat" ${d.chat ? 'checked' : ''}><span>💬</span></label>
+    <label class="tg chat" title="Send to Chat"><input type="checkbox" data-k="chat" ${d.chat ? 'checked' : ''}><span><svg class="gi"><use href="#gchat"/></svg></span></label>
     <button class="x" type="button" data-act="del" title="Delete">✕</button>
   </div>`).join('') || '<small class="m">None yet.</small>';
   document.querySelectorAll('#defs textarea').forEach(autosize);
@@ -443,22 +462,35 @@ $('dForm').onsubmit = e => {
 };
 
 // ---------- clear actions ----------
-$('clrAll').onclick = () => {
-  if (!confirm('Delete ALL task entries and day marks? Daily defaults are kept. This cannot be undone.')) return;
-  S.tasks = []; S.days = {}; S.mat = []; S.lastSent = '';
-  ensureDefaults(TODAY); save(); openDays.clear(); openDays.add(TODAY); showAll = false; render(); toast('All entries cleared', 'ok');
-};
-$('clrDef').onclick = () => {
-  if (!confirm('Delete ALL daily defaults? Your existing entries are kept (only the default rows for today are removed).')) return;
-  S.defaults = []; S.tasks = S.tasks.filter(t => !(t.date === TODAY && t.def)); save(); render(); toast('Defaults cleared', 'ok');
-};
+function arm(btn, action) {          // first tap arms, second tap (within 4s) runs; works where confirm() is blocked
+  const label = btn.textContent; let timer;
+  const reset = () => { clearTimeout(timer); btn.classList.remove('armed'); btn.textContent = label; btn.dataset.armed = ''; };
+  btn.onclick = () => {
+    if (btn.dataset.armed) { reset(); action(); return; }
+    btn.dataset.armed = '1'; btn.classList.add('armed'); btn.textContent = 'Tap again to confirm'; timer = setTimeout(reset, 4000);
+  };
+}
+arm($('clrAll'), () => {
+  const n = S.tasks.length;
+  S.tasks = []; S.days = {}; S.mat = [TODAY]; S.lastSent = '';     // today counts as set up, so defaults are not re-added to it
+  save(); openDays.clear(); openDays.add(TODAY); showAll = false; render(); toast(n + ' entries cleared (defaults kept)', 'ok');
+});
+arm($('clrDef'), () => {
+  const n = S.defaults.length;
+  S.defaults = []; S.tasks = S.tasks.filter(t => !(t.date === TODAY && t.def)); save(); render(); toast(n + ' defaults cleared (entries kept)', 'ok');
+});
 
 // ---------- send to Chat (descriptions only) ----------
+let resendOk = false;
 $('send').onclick = async () => {
   if (!setupOk()) { showSettings(); return toast('Complete Settings first', 'err'); }
   const list = S.tasks.filter(t => t.date === TODAY && t.desc.trim() && sentFlag(t));
   if (!list.length) return toast('No tasks to send for today', 'err');
-  if (S.lastSent === TODAY && !confirm('Today was already sent. Send again?')) return;
+  if (S.lastSent === TODAY && !resendOk) {
+    resendOk = true; setTimeout(() => { resendOk = false; }, 5000);
+    return toast('Already sent today. Tap Send again to resend.', '');
+  }
+  resendOk = false;
   const text = `*${S.name}* — ${T.fmtDate(TODAY)}\n` + list.map(t => '• ' + t.desc.trim()).join('\n');
   $('send').disabled = true;
   try {
