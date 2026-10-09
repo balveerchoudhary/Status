@@ -26,8 +26,18 @@
     return null;
   }
 
-  // Sprints start on Tuesday. Sprint-153 started Tue 06-Oct-2026.
-  const sprintFor = iso => 'Sprint-' + (153 + Math.floor((utc(iso) - Date.UTC(2026, 9, 6)) / DAY_MS / 7));
+  // Sprint config: name prefix, the sprint number that applied on `anchor`, and the weekday (0=Sun..6=Sat) a new sprint starts.
+  // Default: Sprint-153 started Tue 06-Oct-2026, so Sprint-154 starts Tue 13-Oct-2026.
+  let sprintCfg = { prefix: 'Sprint-', num: 153, day: 2, anchor: '2026-10-06' };
+  const setSprintConfig = c => { sprintCfg = Object.assign({}, sprintCfg, c); };
+  const getSprintConfig = () => Object.assign({}, sprintCfg);
+  const sprintNumber = iso => {
+    const a = sprintCfg.anchor;
+    const startMs = utc(a) - ((dow(a) - sprintCfg.day + 7) % 7) * DAY_MS;      // last sprint-start weekday on/before anchor
+    return sprintCfg.num + Math.floor((utc(iso) - startMs) / DAY_MS / 7);
+  };
+  const sprintFor = iso => sprintCfg.prefix + sprintNumber(iso);
+  const nextSprintStart = iso => fromUtc(utc(iso) + (((sprintCfg.day - dow(iso) + 7) % 7) || 7) * DAY_MS);
 
   const BLUE = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
 
@@ -65,6 +75,6 @@
     return wb;
   }
 
-  const api = { DAYN, MON, pad, round2, isoLocal, utc, fromUtc, dow, fmtDate, mondayOf, parseDate, sprintFor, buildWorkbook };
+  const api = { DAYN, MON, pad, round2, isoLocal, utc, fromUtc, dow, fmtDate, mondayOf, parseDate, sprintFor, sprintNumber, setSprintConfig, getSprintConfig, nextSprintStart, buildWorkbook };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Timesheet = api;
 })(typeof window !== 'undefined' ? window : globalThis);
