@@ -10,10 +10,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script src="timesheet.js"></script>
 <style>
-  :root { --bg:#f3f5fb; --card:#fff; --text:#1f2937; --muted:#6b7280; --line:#e5e7eb; --primary:#4472c4; --primary-d:#2f56a0;
+  :root { --ifx:brightness(0); --bg:#f3f5fb; --card:#fff; --text:#1f2937; --muted:#6b7280; --line:#e5e7eb; --primary:#4472c4; --primary-d:#2f56a0;
           --ok:#16a34a; --danger:#dc2626; --green:#e3f8ec; --yellow:#fff9c4; --soft:#eef2fb; --amber:#f59e0b; }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0f1420; --card:#181f2e; --text:#e5e7eb; --muted:#9ca3af; --line:#2a3347; --green:#16352a; --yellow:#3b3715; --soft:#1f2940; color-scheme:dark; } }
-  :root[data-theme="dark"] { --bg:#0f1420; --card:#181f2e; --text:#e5e7eb; --muted:#9ca3af; --line:#2a3347; --green:#16352a; --yellow:#3b3715; --soft:#1f2940; color-scheme:dark; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0f1420; --card:#181f2e; --text:#e5e7eb; --muted:#9ca3af; --line:#2a3347; --green:#16352a; --yellow:#3b3715; --soft:#1f2940; --ifx:brightness(0) invert(1); color-scheme:dark; } }
+  :root[data-theme="dark"] { --bg:#0f1420; --card:#181f2e; --text:#e5e7eb; --muted:#9ca3af; --line:#2a3347; --green:#16352a; --yellow:#3b3715; --soft:#1f2940; --ifx:brightness(0) invert(1); color-scheme:dark; }
   #theme { flex:none; min-height:38px; min-width:38px; padding:0; font-size:18px; background:rgba(255,255,255,.2); }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   body { margin:0; background:var(--bg); color:var(--text); font:16px/1.4 system-ui,Segoe UI,Roboto,sans-serif; padding-bottom:calc(100px + env(safe-area-inset-bottom)); }
@@ -21,7 +21,6 @@
   header h1 { margin:0; font-size:18px; white-space:nowrap; flex:none; }
   header small { flex:1; text-align:right; font-size:14px; font-weight:600; opacity:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   @media (max-width:480px) { .yr, .sprintb { display:none; } }
-  @media (max-width:400px) { .ttl { display:none; } }
   main { max-width:760px; margin:0 auto; padding:12px; display:grid; gap:12px; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px; }
   label { display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:3px; }
@@ -117,6 +116,8 @@
   .tg.daily input:checked + span { background:var(--soft); box-shadow:inset 0 0 0 2px var(--primary); opacity:1; }
   .tg.chat input:checked + span { background:var(--green); box-shadow:inset 0 0 0 2px #00ac47; }
   .tg.chat .gi { filter:grayscale(1); } .tg.chat input:checked + span .gi { filter:none; }
+  .dhead .gi { filter:var(--ifx); } .dhead .c4 { color:var(--text); font-size:16px; font-weight:700; }
+  .ico-b { color:var(--text); font-weight:700; }
   .armed { background:var(--danger) !important; color:#fff !important; }
 </style>
 </head>
@@ -127,7 +128,7 @@
   <rect x="7" y="7" width="10" height="2.2" rx="1.1" fill="#fff"/><rect x="7" y="11" width="6.5" height="2.2" rx="1.1" fill="#fff"/>
 </symbol></svg>
 <header>
-  <h1>📋 <span class="ttl">Daily Status</span></h1>
+  <h1>Daily Status</h1>
   <small id="who"></small>
   <button id="theme" type="button" aria-label="Switch light / dark mode"></button>
 </header>
@@ -156,8 +157,8 @@
   <button class="ghost more" id="older" hidden></button>
 
   <details class="card" id="defsBox">
-    <summary>🔁 Daily defaults <small class="m" style="font-weight:400">— recurring tasks like meetings</small></summary>
-    <div class="dhead"><span>Description</span><span class="c2">Sub</span><span class="c3">Hrs</span><span class="c4" title="Add every weekday">🔁</span><span class="c5" title="Send to Chat"><svg class="gi"><use href="#gchat"/></svg></span><span class="c6"></span></div>
+    <summary><span class="ico-b">↻</span> Daily defaults <small class="m" style="font-weight:400">— recurring tasks like meetings</small></summary>
+    <div class="dhead"><span>Description</span><span class="c2">Sub</span><span class="c3">Hrs</span><span class="c4" title="Add every weekday">↻</span><span class="c5" title="Send to Chat"><svg class="gi"><use href="#gchat"/></svg></span><span class="c6"></span></div>
     <div id="defs"></div>
     <form id="dForm" class="fgrid" style="margin-top:12px;padding-top:12px;border-top:2px solid var(--line)" autocomplete="off">
       <input id="dDesc" placeholder="New default, e.g. Participated in Daily Scrum" required>
