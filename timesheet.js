@@ -29,6 +29,15 @@
   // Sprints start on Tuesday. Sprint-153 started Tue 06-Oct-2026.
   const sprintFor = iso => 'Sprint-' + (153 + Math.floor((utc(iso) - Date.UTC(2026, 9, 6)) / DAY_MS / 7));
 
+  // Task category / type are no longer entered by hand; derive them for the Excel columns.
+  function classify(desc) {
+    const d = String(desc || '');
+    if (/scrum|stand-?up/i.test(d)) return ['Project Management', 'Daily Scrum'];
+    if (/requirement/i.test(d) && /review|analy|document|clarif/i.test(d)) return ['Requirements Analysis', 'Requirements Analysis & Documentation'];
+    if (/discuss|meeting|call with/i.test(d)) return ['Design & Development', 'Technical Design Development'];
+    return ['Design & Development', 'Coding'];
+  }
+
   const GREEN = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB7F0D1' } };
   const YELLOW = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF99' } };
 
@@ -76,7 +85,8 @@
       const start = r;
       for (let k = 0; k < Math.max(list.length, 1); k++, r++) {
         const t = list[k];
-        const vals = [k === 0 ? DAYN[w] : '', k === 0 ? fmtDate(d) : '', t ? t.cat : '', t ? t.type : '',
+        const ct = t ? classify(t.desc) : ['', ''];
+        const vals = [k === 0 ? DAYN[w] : '', k === 0 ? fmtDate(d) : '', ct[0], ct[1],
           t ? t.ctx : '', t ? t.sub : '', t ? t.desc : '', t ? +t.hrs : null, k === 0 && list.length ? dayHrs(d) : null];
         vals.forEach((v, i) => put(r, i + 1, v, { fill, h: i >= 7 ? 'center' : 'left' }));
       }
@@ -90,59 +100,6 @@
     return wb;
   }
 
-  const val = c => {
-    let v = c.value;
-    if (v && typeof v === 'object' && !(v instanceof Date)) {
-      if (v.richText) v = v.richText.map(x => x.text).join('');
-      else if ('result' in v) v = v.result;
-      else if (v.text) v = v.text;
-    }
-    return v == null ? '' : v;
-  };
-  function fillKind(cell) {
-    const a = cell.fill && cell.fill.fgColor && cell.fill.fgColor.argb;
-    if (!a || a.length < 6) return '';
-    const h = a.slice(-6);
-    const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
-    if (r > 200 && g > 200 && b < 190) return 'leave';
-    if (g > 200 && g >= r + 15 && g >= b) return 'off';
-    return '';
-  }
-
-  async function parseWorkbook(ExcelJS, buf) {
-    const wb = new ExcelJS.Workbook();
-    await wb.xlsx.load(buf);
-    const ws = wb.worksheets[0];
-    if (!ws) throw new Error('No sheet found');
-    let hdr = 0;
-    for (let r = 1; r <= Math.min(ws.rowCount, 20); r++) {
-      if (String(val(ws.getCell(r, 1))).trim() === 'Day') { hdr = r; break; }
-    }
-    if (!hdr) throw new Error('Header row ("Day, Date, Task category…") not found');
-    const out = { empId: String(val(ws.getCell(1, 3))).trim(), name: String(val(ws.getCell(1, 5))).trim(), tasks: [], days: {} };
-    let last = '';
-    for (let r = hdr + 1; r <= ws.rowCount; r++) {
-      if (/^total$/i.test(String(val(ws.getCell(r, 1))).trim()) || /^total$/i.test(String(val(ws.getCell(r, 2))).trim())) break;
-      const dv = val(ws.getCell(r, 2));
-      const d = dv instanceof Date ? fromUtc(dv.getTime()) : (dv ? parseDate(dv) : null);
-      if (d) last = d;
-      if (!last) continue;
-      const desc = String(val(ws.getCell(r, 7))).trim();
-      if (!desc) {
-        const k = fillKind(ws.getCell(r, 2));
-        if (k && d) out.days[last] = (k === 'off' && [0, 6].includes(dow(last))) ? undefined : k;
-        if (out.days[last] === undefined) delete out.days[last];
-        continue;
-      }
-      out.tasks.push({
-        date: last, cat: String(val(ws.getCell(r, 3))).trim(), type: String(val(ws.getCell(r, 4))).trim(),
-        ctx: String(val(ws.getCell(r, 5))).trim() || sprintFor(last), sub: String(val(ws.getCell(r, 6))).trim(),
-        desc, hrs: parseFloat(val(ws.getCell(r, 8))) || 0
-      });
-    }
-    return out;
-  }
-
-  const api = { DAYN, MON, pad, round2, isoLocal, utc, fromUtc, dow, fmtDate, mondayOf, parseDate, sprintFor, buildWorkbook, parseWorkbook };
+  const api = { DAYN, MON, pad, round2, isoLocal, utc, fromUtc, dow, fmtDate, mondayOf, parseDate, sprintFor, classify, buildWorkbook };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Timesheet = api;
 })(typeof window !== 'undefined' ? window : globalThis);
