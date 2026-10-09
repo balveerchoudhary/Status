@@ -2,229 +2,401 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#4472c4">
 <title>Daily Status Reporter</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="timesheet.js"></script>
 <style>
-  :root {
-    --bg:#f3f5fb; --card:#fff; --text:#1f2937; --muted:#6b7280; --line:#e5e7eb;
-    --primary:#4472c4; --primary-d:#2f56a0; --ok:#16a34a; --danger:#dc2626;
-  }
+  :root { --bg:#f3f5fb; --card:#fff; --text:#1f2937; --muted:#6b7280; --line:#e5e7eb; --primary:#4472c4; --primary-d:#2f56a0;
+          --ok:#16a34a; --danger:#dc2626; --green:#e3f8ec; --yellow:#fff9c4; --soft:#eef2fb; }
   @media (prefers-color-scheme: dark) {
-    :root { --bg:#0f1420; --card:#181f2e; --text:#e5e7eb; --muted:#9ca3af; --line:#2a3347; }
+    :root { --bg:#0f1420; --card:#181f2e; --text:#e5e7eb; --muted:#9ca3af; --line:#2a3347; --green:#16352a; --yellow:#3b3715; --soft:#1f2940; }
   }
-  * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 system-ui,Segoe UI,Roboto,sans-serif; }
-  header { background:linear-gradient(135deg,#4472c4,#2f56a0); color:#fff; padding:28px 16px; }
-  header h1 { margin:0 auto; max-width:1100px; font-size:24px; }
-  header p { margin:4px auto 0; max-width:1100px; opacity:.85; }
-  main { max-width:1100px; margin:20px auto; padding:0 16px 60px; display:grid; gap:16px; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
-  .card h2 { margin:0 0 12px; font-size:16px; }
-  label { display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:4px; }
-  input, textarea { width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background:transparent; color:var(--text); font:inherit; }
-  input:focus, textarea:focus { outline:2px solid var(--primary); border-color:transparent; }
-  .grid { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); }
-  .row-form { display:grid; gap:12px; grid-template-columns:150px 1fr 1fr 90px; }
-  .row-form .desc { grid-column:1 / -1; }
-  @media (max-width:700px){ .row-form { grid-template-columns:1fr 1fr; } }
-  button { cursor:pointer; border:0; border-radius:8px; padding:10px 16px; font:inherit; font-weight:600; background:var(--primary); color:#fff; }
-  button:hover { background:var(--primary-d); }
-  button.ghost { background:transparent; color:var(--primary); border:1px solid var(--line); }
-  button.danger { background:transparent; color:var(--danger); padding:4px 8px; }
-  .actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; align-items:center; }
-  .table-wrap { overflow-x:auto; }
-  table { width:100%; border-collapse:collapse; }
-  th { background:var(--primary); color:#fff; text-align:left; padding:8px 10px; font-size:13px; }
-  td { padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
-  td.h { text-align:center; white-space:nowrap; }
-  .empty { color:var(--muted); text-align:center; padding:20px; }
-  .total { margin-left:auto; font-weight:700; }
-  #status { font-size:14px; }
-  .ok { color:var(--ok); } .err { color:var(--danger); }
-  small { color:var(--muted); }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.4 system-ui,Segoe UI,Roboto,sans-serif; padding-bottom:calc(84px + env(safe-area-inset-bottom)); }
+  header { background:linear-gradient(135deg,#4472c4,#2f56a0); color:#fff; padding:14px 16px; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  header h1 { margin:0; font-size:18px; } header small { opacity:.85; }
+  main { max-width:1000px; margin:0 auto; padding:12px; display:grid; gap:12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px; }
+  label { display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:3px; }
+  input, textarea, select { width:100%; min-height:44px; padding:9px 10px; border:1px solid var(--line); border-radius:10px; background:transparent; color:var(--text); font:inherit; }
+  textarea { resize:none; overflow:hidden; }
+  select option { color:#000; }
+  input:focus, textarea:focus, select:focus { outline:2px solid var(--primary); border-color:transparent; }
+  button { cursor:pointer; border:0; border-radius:10px; min-height:44px; padding:0 14px; font:inherit; font-weight:600; background:var(--primary); color:#fff; }
+  button:active { background:var(--primary-d); }
+  button.ghost { background:var(--soft); color:var(--primary); }
+  .ico { min-width:44px; padding:0; background:transparent; color:var(--muted); font-size:18px; }
+  .ico.del { color:var(--danger); }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .grid3 { display:grid; grid-template-columns:1fr 1fr 84px; gap:8px; }
+  #form { display:grid; gap:8px; }
+  #form .hint { font-size:12px; color:var(--muted); }
+  details summary { cursor:pointer; font-weight:600; min-height:32px; }
+  details[open] summary { margin-bottom:8px; }
+
+  .bar { display:flex; gap:8px; align-items:center; }
+  .bar input[type=month] { flex:1; }
+  #status { font-size:14px; min-height:20px; } .ok { color:var(--ok); } .err { color:var(--danger); }
+
+  .day { background:var(--card); border:1px solid var(--line); border-radius:14px; overflow:hidden; }
+  .day.today { border-color:var(--primary); box-shadow:0 0 0 2px rgba(68,114,196,.2); }
+  .day.off, .day.wk { background:var(--green); } .day.leave { background:var(--yellow); }
+  .dayhead { display:flex; flex-wrap:wrap; gap:6px 8px; align-items:center; padding:10px 12px; background:var(--soft); }
+  .dayhead b { font-size:15px; }
+  .badge { font-size:11px; padding:2px 8px; border-radius:99px; background:var(--card); color:var(--muted); border:1px solid var(--line); }
+  .badge.now { background:var(--primary); color:#fff; border-color:transparent; }
+  .hrs { margin-left:auto; font-weight:700; }
+  .dayhead select { width:auto; min-height:34px; padding:2px 6px; font-size:13px; }
+  .trow { display:grid; grid-template-columns:44px 1fr 74px auto; gap:6px; align-items:center; padding:8px 8px 8px 4px; border-top:1px solid var(--line); background:var(--card); }
+  .trow.def { border-left:4px solid #9ca3af; }
+  .trow.moving { background:var(--soft); box-shadow:0 4px 14px rgba(0,0,0,.25); position:relative; z-index:2; }
+  .trow .grip { grid-row:1; min-width:44px; height:44px; display:flex; align-items:center; justify-content:center; font-size:22px; color:var(--muted); cursor:grab; touch-action:none; user-select:none; }
+  .trow [data-f=type] { grid-column:2; } .trow [data-f=hrs] { grid-column:3; text-align:center; padding:9px 4px; }
+  .trow .ra { grid-column:4; display:flex; }
+  .trow .subs { grid-column:1 / -1; display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .trow [data-f=desc] { grid-column:1 / -1; }
+  .tag { grid-column:1 / -1; font-size:11px; color:var(--muted); }
+  .empty { padding:14px; color:var(--muted); text-align:center; }
+  .more { width:100%; }
+
+  .dock { position:fixed; left:0; right:0; bottom:0; display:flex; gap:8px; padding:10px 12px calc(10px + env(safe-area-inset-bottom)); background:var(--card); border-top:1px solid var(--line); z-index:5; }
+  .dock button { flex:1; min-height:48px; } .dock .ghost { flex:0 0 52px; padding:0; font-size:18px; }
+  #defs .drow { display:flex; gap:6px; align-items:center; padding:6px 0; border-top:1px solid var(--line); }
+  #defs .drow span { flex:1; }
+
+  @media (min-width:720px) {
+    .trow { grid-template-columns:44px 190px 110px 120px 1fr 70px auto; }
+    .trow .grip, .trow [data-f=type], .trow [data-f=hrs], .trow .ra, .trow .subs, .trow [data-f=desc] { grid-column:auto; grid-row:auto; }
+    .trow .subs { display:contents; }
+    .trow [data-f=hrs] { order:6; } .trow .ra { order:7; } .trow [data-f=desc] { order:5; }
+    .tag { grid-column:2 / -1; }
+  }
 </style>
 </head>
 <body>
 <header>
-  <h1>📋 Daily Status Reporter</h1>
-  <p>Add your tasks, then post them to your Google Chat space as one neat card.</p>
+  <h1>📋 Daily Status</h1>
+  <small id="who"></small>
 </header>
 
 <main>
   <section class="card">
-    <h2>1 · Setup</h2>
-    <div class="grid">
-      <div>
-        <label for="name">Your name</label>
-        <input id="name" placeholder="e.g. Balveer Choudhary">
+    <form id="form" autocomplete="off">
+      <textarea id="desc" rows="2" placeholder="What did you work on?" required></textarea>
+      <div class="grid3">
+        <select id="type" aria-label="Type"></select>
+        <input id="sub" placeholder="Sub (AVID-50)" list="subList" aria-label="Task sub context">
+        <input id="hrs" type="number" inputmode="decimal" step="0.25" min="0" value="1" aria-label="Hours">
       </div>
-      <div>
-        <label for="hook">Google Chat webhook URL</label>
-        <input id="hook" type="password" placeholder="https://chat.googleapis.com/v1/spaces/…">
-      </div>
-    </div>
-    <small>Both are saved only in this browser (localStorage). The webhook URL is never sent anywhere except Google Chat.</small>
-  </section>
-
-  <section class="card">
-    <h2>2 · Add a task</h2>
-    <form id="form" class="row-form">
-      <div><label for="date">Date</label><input id="date" type="date" required></div>
-      <div><label for="ctx">Task context</label><input id="ctx" placeholder="Sprint-148" list="ctxList"></div>
-      <div><label for="sub">Task sub context</label><input id="sub" placeholder="CTCR-183"></div>
-      <div><label for="hrs">Hours</label><input id="hrs" type="number" step="0.25" min="0" value="1" required></div>
-      <div class="desc"><label for="desc">Description</label><textarea id="desc" rows="2" required placeholder="What did you work on?"></textarea></div>
-      <div class="actions" style="grid-column:1/-1;margin-top:0">
+      <div class="grid2">
+        <input id="date" type="date" aria-label="Date">
         <button type="submit">＋ Add task</button>
-        <button type="button" class="ghost" id="paste">Paste rows from Excel</button>
       </div>
+      <div class="hint" id="hint"></div>
     </form>
-    <datalist id="ctxList"></datalist>
+    <datalist id="subList"></datalist>
   </section>
 
-  <section class="card">
-    <h2>3 · Tasks to send</h2>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Date</th><th>Task context</th><th>Task sub context</th><th>Description</th><th>Hours</th><th></th></tr></thead>
-        <tbody id="rows"></tbody>
-      </table>
-    </div>
-    <div class="actions">
-      <button id="send">📤 Send to Google Chat</button>
-      <button class="ghost" id="clear">Clear all</button>
-      <span id="status"></span>
-      <span class="total" id="total"></span>
-    </div>
+  <section class="bar">
+    <input id="month" type="month" aria-label="Month">
+    <span id="status"></span>
   </section>
+
+  <div id="days" style="display:grid;gap:12px"></div>
+  <button class="ghost more" id="goPrev" hidden></button>
+
+  <details class="card" id="defsBox">
+    <summary>🔁 Daily defaults <small style="font-weight:400;color:var(--muted)">— added to every weekday, never sent to Chat</small></summary>
+    <div id="defs"></div>
+    <div class="grid3" style="margin-top:8px">
+      <select id="dType"></select><input id="dSub" placeholder="Sub (optional)"><input id="dHrs" type="number" inputmode="decimal" step="0.25" value="0.5">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px"><input id="dDesc" placeholder="e.g. Participated in Daily Scrum"><button id="dAdd" type="button">Add</button></div>
+  </details>
+
+  <details class="card" id="setBox">
+    <summary>⚙ Settings <small id="setNote" style="font-weight:400;color:var(--muted)">— one-time setup</small></summary>
+    <div class="grid2">
+      <div><label for="name">Your name *</label><input id="name" placeholder="Balveer Choudhary"></div>
+      <div><label for="empId">Employee Id *</label><input id="empId" placeholder="E25/2703"></div>
+    </div>
+    <label for="hook" style="margin-top:8px">Google Chat webhook URL *</label>
+    <input id="hook" type="password">
+    <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+      <button id="setSave" type="button">Save settings</button>
+      <small style="color:var(--muted)">Saved only in this browser, once.</small>
+    </div>
+  </details>
 </main>
 
+<div class="dock">
+  <button id="send">📤 Send today to Chat</button>
+  <button id="dl" class="ghost" title="Download Excel">⬇</button>
+  <button id="up" class="ghost" title="Upload Excel">⬆</button>
+  <input id="file" type="file" accept=".xlsx" hidden>
+</div>
+
 <script>
+const T = window.Timesheet;
 const $ = id => document.getElementById(id);
+const uid = () => Math.random().toString(36).slice(2, 10);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const store = {
-  get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
 };
-let tasks = store.get('tasks', []);
-$('name').value = store.get('name', '');
 const DEFAULT_HOOK = 'https://chat.googleapis.com/v1/spaces/AAQAl_LK3eY/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=nF6dHZ_NdJ0gRwpx7rRT97sHLbNnljKjs4WsHpB6brI';
-$('hook').value = store.get('hook', '') || DEFAULT_HOOK;
-$('date').valueAsDate = new Date();
-$('name').oninput = e => store.set('name', e.target.value.trim());
-$('hook').oninput = e => store.set('hook', e.target.value.trim());
+const PRESETS = [
+  { cat: 'Design & Development', type: 'Coding' },
+  { cat: 'Design & Development', type: 'Technical Design Development' },
+  { cat: 'Project Management', type: 'Daily Scrum' },
+  { cat: 'Requirements Analysis', type: 'Requirements Analysis & Documentation' }
+];
+const TODAY = T.isoLocal(new Date());
 
-const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-const fmtDate = iso => {            // 2026-09-01 -> 01-Sep-2026
-  const [y, m, d] = iso.split('-');
-  return MON[+m - 1] ? `${d}-${MON[+m - 1]}-${y}` : iso;
-};
-const parseDate = s => {            // accepts 01-Sep-2026 or ISO
-  s = s.trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  const m = s.match(/^(\d{1,2})[-\/ ]([A-Za-z]{3})[a-z]*[-\/ ](\d{4})$/);
-  if (m) { const i = MON.findIndex(x => x.toLowerCase() === m[2].toLowerCase()); if (i >= 0) return `${m[3]}-${String(i+1).padStart(2,'0')}-${m[1].padStart(2,'0')}`; }
-  return null;
-};
-
-function render() {
-  store.set('tasks', tasks);
-  const tb = $('rows');
-  tb.innerHTML = tasks.length ? '' : '<tr><td colspan="6" class="empty">No tasks yet — add one above.</td></tr>';
-  tasks.forEach((t, i) => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${fmtDate(t.date)}</td><td>${esc(t.ctx)}</td><td>${esc(t.sub)}</td><td>${esc(t.desc)}</td><td class="h">${t.hrs}</td><td><button class="danger" title="Remove">✕</button></td>`;
-    tr.querySelector('button').onclick = () => { tasks.splice(i, 1); render(); };
-    tb.appendChild(tr);
-  });
-  const sum = tasks.reduce((a, t) => a + t.hrs, 0);
-  $('total').textContent = tasks.length ? `Total: ${sum} h` : '';
-  const ctxs = [...new Set(tasks.map(t => t.ctx).filter(Boolean))];
-  $('ctxList').innerHTML = ctxs.map(c => `<option value="${esc(c)}">`).join('');
+// ---------- state ----------
+function blank() {
+  return { name: '', empId: '', hook: DEFAULT_HOOK, tasks: [], days: {}, mat: [], lastSent: '',
+           defaults: [{ id: uid(), cat: 'Project Management', type: 'Daily Scrum', sub: '', desc: 'Participated in Daily Scrum', hrs: 0.5 }] };
 }
-
-$('form').onsubmit = e => {
-  e.preventDefault();
-  tasks.push({ date: $('date').value, ctx: $('ctx').value.trim(), sub: $('sub').value.trim(),
-               desc: $('desc').value.trim(), hrs: parseFloat($('hrs').value) || 0 });
-  $('sub').value = ''; $('desc').value = '';
-  render(); $('desc').focus();
+let S = Object.assign(blank(), store.get('v2', null) || migrate());
+function migrate() {            // from the first version of this page
+  const old = store.get('tasks', null); if (!old) return null;
+  return { name: store.get('name', ''), hook: store.get('hook', '') || DEFAULT_HOOK,
+    tasks: old.map(t => ({ id: uid(), date: t.date, cat: PRESETS[0].cat, type: PRESETS[0].type, ctx: t.ctx || T.sprintFor(t.date), sub: t.sub || '', desc: t.desc, hrs: t.hrs })) };
+}
+const save = () => store.set('v2', S);
+const presets = () => {
+  const list = [...PRESETS];
+  S.tasks.concat(S.defaults).forEach(t => { if (t.type && !list.some(p => p.type === t.type)) list.push({ cat: t.cat, type: t.type }); });
+  return list;
 };
-$('clear').onclick = () => { if (tasks.length && confirm('Remove all tasks?')) { tasks = []; render(); } };
+const catOf = type => (presets().find(p => p.type === type) || PRESETS[0]).cat;
+const typeOptions = sel => presets().map(p => `<option value="${esc(p.type)}"${p.type === sel ? ' selected' : ''}>${esc(p.type)}</option>`).join('');
 
-$('paste').onclick = async () => {
-  let text = '';
-  try { text = await navigator.clipboard.readText(); } catch { text = prompt('Paste tab-separated rows (Date, Context, Sub context, Description, Hours):') || ''; }
-  let added = 0;
-  text.split(/\r?\n/).forEach(line => {
-    const c = line.split('\t');
-    if (c.length < 5) return;
-    const date = parseDate(c[0]); const hrs = parseFloat(c[4]);
-    if (!date || isNaN(hrs)) return;            // skips header / bad rows
-    tasks.push({ date, ctx: c[1].trim(), sub: c[2].trim(), desc: c[3].trim(), hrs }); added++;
-  });
-  setStatus(added ? `Added ${added} row(s).` : 'No valid rows found in clipboard.', added ? 'ok' : 'err');
-  render();
+function ensureDefaults(date) {   // materialise default tasks the first time a weekday is used
+  if (S.mat.includes(date)) return;
+  S.mat.push(date);
+  const w = T.dow(date);
+  if (w === 0 || w === 6 || S.days[date]) return;
+  S.defaults.forEach(d => S.tasks.push({ id: uid(), date, cat: d.cat, type: d.type, ctx: T.sprintFor(date), sub: d.sub || '', desc: d.desc, hrs: d.hrs, def: true }));
+}
+ensureDefaults(TODAY); save();
+
+// ---------- setup fields ----------
+$('name').value = S.name; $('empId').value = S.empId; $('hook').value = S.hook;
+$('name').oninput = e => { S.name = e.target.value.trim(); save(); who(); };
+$('empId').oninput = e => { S.empId = e.target.value.trim(); save(); };
+$('hook').oninput = e => { S.hook = e.target.value.trim(); save(); };
+const who = () => { $('who').textContent = S.name; };
+who();
+const setupOk = () => S.name && S.empId && /^https:\/\/chat\.googleapis\.com\//.test(S.hook);
+$('setBox').open = !setupOk();               // first run: open until everything required is filled
+$('setSave').onclick = () => {
+  if (!setupOk()) { $('setNote').textContent = '— name, Employee Id and a valid webhook URL are required'; $('setNote').style.color = 'var(--danger)'; return; }
+  $('setNote').textContent = '— saved ✓'; $('setNote').style.color = 'var(--ok)'; $('setBox').open = false;
 };
-
+$('date').value = TODAY; $('month').value = TODAY.slice(0, 7);
+$('month').onchange = () => render();
 function setStatus(msg, cls) { const s = $('status'); s.textContent = msg; s.className = cls || ''; }
 
-// ---- Google Chat card ----
-function buildCards(name, list) {
-  const byDate = {};
-  list.forEach(t => (byDate[t.date] ||= []).push(t));
-  const dates = Object.keys(byDate).sort();
-  const grand = list.reduce((a, t) => a + t.hrs, 0);
-  const PER_MSG = 4;                              // dates per message keeps payload small
-  const msgs = [];
-  for (let i = 0; i < dates.length; i += PER_MSG) {
-    const chunk = dates.slice(i, i + PER_MSG);
-    const first = i === 0;
-    const sections = chunk.map(d => {
-      const items = byDate[d];
-      const day = items.reduce((a, t) => a + t.hrs, 0);
-      return {
-        header: `📅 ${fmtDate(d)}  ·  ${day} h`,
-        collapsible: false,
-        widgets: items.map(t => ({
-          decoratedText: {
-            topLabel: [t.ctx, t.sub].filter(Boolean).join('  ›  ') || 'General',
-            text: esc(t.desc),
-            wrapText: true,
-            bottomLabel: `⏱ ${t.hrs} h`
-          }
-        }))
-      };
-    });
-    const card = {
-      header: first
-        ? { title: `📋 Status Update — ${name}`, subtitle: `${fmtDate(dates[0])} → ${fmtDate(dates[dates.length-1])}  ·  ${grand} h total  ·  ${list.length} tasks` }
-        : { title: `📋 ${name} (continued)` },
-      sections
-    };
-    msgs.push({ text: first ? `*${name}* shared a status update` : undefined, cardsV2: [{ cardId: 'status-' + i, card }] });
+// ---------- add task ----------
+function refreshForm() {
+  const keep = $('type').value;
+  $('type').innerHTML = typeOptions(keep || 'Coding'); $('dType').innerHTML = typeOptions($('dType').value || 'Daily Scrum');
+  const subs = [], seen = new Set();
+  for (let i = S.tasks.length - 1; i >= 0 && subs.length < 40; i--) { const s = S.tasks[i].sub; if (s && !S.tasks[i].def && !seen.has(s)) { seen.add(s); subs.push(s); } }
+  $('subList').innerHTML = subs.map(s => `<option value="${esc(s)}">`).join('');
+  const d = $('date').value || TODAY;
+  $('hint').textContent = `${T.DAYN[T.dow(d)]} · ${T.sprintFor(d)} (auto)`;
+}
+$('date').onchange = refreshForm;
+$('sub').onchange = () => {     // reuse the last entry for this sub context
+  const v = $('sub').value.trim(); if (!v || $('desc').value.trim()) return;
+  const t = [...S.tasks].reverse().find(x => x.sub === v && !x.def); if (!t) return;
+  $('desc').value = t.desc; $('hrs').value = t.hrs; $('type').value = t.type; autosize($('desc'));
+};
+$('form').onsubmit = e => {
+  e.preventDefault();
+  const date = $('date').value || TODAY, type = $('type').value;
+  ensureDefaults(date);
+  S.tasks.push({ id: uid(), date, cat: catOf(type), type, ctx: T.sprintFor(date), sub: $('sub').value.trim(), desc: $('desc').value.trim(), hrs: parseFloat($('hrs').value) || 0 });
+  save(); $('sub').value = ''; $('desc').value = ''; autosize($('desc'));
+  if (!date.startsWith($('month').value)) $('month').value = date.slice(0, 7);
+  render(); $('desc').focus(); setStatus('Added ✓', 'ok');
+};
+function autosize(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 2 + 'px'; }
+$('desc').addEventListener('input', e => autosize(e.target));
+
+// ---------- history ----------
+let showAll = false;
+function render() {
+  const ym = $('month').value || TODAY.slice(0, 7);
+  const set = new Set(S.tasks.filter(t => t.date.startsWith(ym)).map(t => t.date));
+  Object.keys(S.days).forEach(d => { if (d.startsWith(ym)) set.add(d); });
+  if (TODAY.startsWith(ym)) set.add(TODAY);
+  const dates = [...set].sort().reverse();       // newest first on screen; Excel is oldest first
+  const LIMIT = 7;
+  const shown = showAll ? dates : dates.slice(0, LIMIT);
+  $('days').innerHTML = shown.length ? shown.map(dayHtml).join('') : '<div class="card empty">No tasks this month.</div>';
+  const more = $('goPrev');
+  more.hidden = showAll || dates.length <= LIMIT;
+  more.textContent = `Show ${dates.length - LIMIT} older day(s)`;
+  document.querySelectorAll('#days textarea').forEach(autosize);
+  refreshForm(); renderDefs();
+}
+$('goPrev').onclick = () => { showAll = true; render(); };
+
+function dayHtml(d) {
+  const list = S.tasks.filter(t => t.date === d), mark = S.days[d] || '';
+  const w = T.dow(d), cls = mark || (w === 0 || w === 6 ? 'wk' : '');
+  const total = T.round2(list.reduce((a, t) => a + (+t.hrs || 0), 0));
+  const sel = v => (mark === v ? ' selected' : '');
+  return `<section class="day ${d === TODAY ? 'today' : ''} ${cls}" data-date="${d}">
+    <div class="dayhead">
+      <b>${T.DAYN[w]} ${T.fmtDate(d)}</b>
+      <span class="badge">${T.sprintFor(d)}</span>${d === TODAY ? '<span class="badge now">Today</span>' : ''}
+      <span class="hrs" data-total="${d}">${total} h</span>
+      <select class="mark" aria-label="Day status"><option value="">Working</option><option value="leave"${sel('leave')}>Leave</option><option value="off"${sel('off')}>Off / Holiday</option></select>
+    </div>
+    ${list.map(rowHtml).join('') || '<div class="empty">No tasks</div>'}
+  </section>`;
+}
+function rowHtml(t) {
+  return `<div class="trow ${t.def ? 'def' : ''}" data-id="${t.id}">
+    <span class="grip" title="Drag to reorder">⠿</span>
+    <select data-f="type">${typeOptions(t.type)}</select>
+    <input data-f="hrs" type="number" inputmode="decimal" step="0.25" min="0" value="${t.hrs}">
+    <span class="ra"><button class="ico" data-act="again" title="Copy to today">⧉</button><button class="ico del" data-act="del" title="Delete">✕</button></span>
+    <span class="subs"><input data-f="ctx" value="${esc(t.ctx)}" placeholder="Sprint"><input data-f="sub" value="${esc(t.sub)}" placeholder="Sub context"></span>
+    <textarea data-f="desc" rows="1">${esc(t.desc)}</textarea>
+    ${t.def ? '<span class="tag">default · not sent to Chat</span>' : ''}
+  </div>`;
+}
+function updateTotals() {
+  document.querySelectorAll('[data-total]').forEach(el => {
+    el.textContent = T.round2(S.tasks.filter(t => t.date === el.dataset.total).reduce((a, t) => a + (+t.hrs || 0), 0)) + ' h';
+  });
+}
+const days = $('days');
+days.addEventListener('change', e => {
+  const row = e.target.closest('.trow');
+  if (row) {
+    const t = S.tasks.find(x => x.id === row.dataset.id), f = e.target.dataset.f; if (!t || !f) return;
+    if (f === 'hrs') t[f] = parseFloat(e.target.value) || 0; else t[f] = e.target.value.trim();
+    if (f === 'type') t.cat = catOf(t.type);
+    save(); updateTotals(); return;
   }
-  return msgs;
+  if (e.target.classList.contains('mark')) setMark(e.target.closest('.day').dataset.date, e.target.value);
+});
+days.addEventListener('input', e => { if (e.target.tagName === 'TEXTAREA') autosize(e.target); });
+days.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const id = b.closest('.trow').dataset.id, i = S.tasks.findIndex(x => x.id === id), t = S.tasks[i];
+  if (b.dataset.act === 'del') { S.tasks.splice(i, 1); save(); render(); }
+  if (b.dataset.act === 'again') {
+    ensureDefaults(TODAY);
+    S.tasks.push({ ...t, id: uid(), date: TODAY, ctx: T.sprintFor(TODAY), def: false }); save();
+    $('month').value = TODAY.slice(0, 7); render(); setStatus('Copied to today ✓', 'ok');
+  }
+});
+function setMark(d, v) {
+  if (v) { S.days[d] = v; S.tasks = S.tasks.filter(t => !(t.date === d && t.def)); S.mat = S.mat.filter(x => x !== d); }
+  else { delete S.days[d]; S.mat = S.mat.filter(x => x !== d); ensureDefaults(d); }
+  save(); render();
 }
 
+// ---------- drag to reorder (pointer events: touch + mouse) ----------
+let drag = null;
+days.addEventListener('pointerdown', e => {
+  const g = e.target.closest('.grip'); if (!g) return;
+  drag = g.closest('.trow'); drag.classList.add('moving'); g.setPointerCapture(e.pointerId); e.preventDefault();
+});
+days.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const el = document.elementFromPoint(e.clientX, e.clientY), r = el && el.closest('.trow');
+  if (!r || r === drag || r.closest('.day') !== drag.closest('.day')) return;
+  const after = e.clientY > r.getBoundingClientRect().top + r.offsetHeight / 2;
+  r.parentNode.insertBefore(drag, after ? r.nextSibling : r);
+});
+const endDrag = () => {
+  if (!drag) return;
+  const date = drag.closest('.day').dataset.date, ids = [...drag.closest('.day').querySelectorAll('.trow')].map(r => r.dataset.id);
+  drag.classList.remove('moving'); drag = null;
+  const idx = []; S.tasks.forEach((t, i) => { if (t.date === date) idx.push(i); });
+  const map = new Map(S.tasks.filter(t => t.date === date).map(t => [t.id, t]));
+  ids.forEach((id, k) => { S.tasks[idx[k]] = map.get(id); });
+  save();
+};
+days.addEventListener('pointerup', endDrag); days.addEventListener('pointercancel', endDrag);
+
+// ---------- defaults ----------
+function renderDefs() {
+  $('defs').innerHTML = S.defaults.map(d => `<div class="drow" data-id="${d.id}"><span>${esc(d.desc)} <small style="color:var(--muted)">· ${esc(d.type)}${d.sub ? ' · ' + esc(d.sub) : ''} · ${d.hrs} h</small></span><button class="ico del" type="button">✕</button></div>`).join('') || '<small style="color:var(--muted)">None yet.</small>';
+}
+$('defs').onclick = e => {
+  const r = e.target.closest('.drow'); if (!r || !e.target.closest('button')) return;
+  S.defaults = S.defaults.filter(d => d.id !== r.dataset.id); save(); renderDefs();
+};
+$('dAdd').onclick = () => {
+  const desc = $('dDesc').value.trim(); if (!desc) return;
+  const type = $('dType').value, d = { id: uid(), cat: catOf(type), type, sub: $('dSub').value.trim(), desc, hrs: parseFloat($('dHrs').value) || 0 };
+  S.defaults.push(d);
+  if (S.mat.includes(TODAY) && ![0, 6].includes(T.dow(TODAY)) && !S.days[TODAY])
+    S.tasks.push({ id: uid(), date: TODAY, cat: d.cat, type: d.type, ctx: T.sprintFor(TODAY), sub: d.sub, desc: d.desc, hrs: d.hrs, def: true });
+  save(); $('dDesc').value = ''; $('dSub').value = ''; render();
+};
+
+// ---------- send to chat (descriptions only) ----------
 $('send').onclick = async () => {
-  const name = $('name').value.trim(), hook = $('hook').value.trim();
-  if (!name) return setStatus('Enter your name.', 'err');
-  if (!/^https:\/\/chat\.googleapis\.com\//.test(hook)) return setStatus('Enter a valid Google Chat webhook URL.', 'err');
-  if (!tasks.length) return setStatus('Add at least one task.', 'err');
-  const msgs = buildCards(name, tasks);
-  $('send').disabled = true;
+  if (!setupOk()) { $('setBox').open = true; return setStatus('Complete Settings first (name, Employee Id, webhook).', 'err'); }
+  const list = S.tasks.filter(t => t.date === TODAY && !t.def && t.desc.trim());
+  if (!list.length) return setStatus('No tasks added for today.', 'err');
+  if (S.lastSent === TODAY && !confirm('Today was already sent. Send again?')) return;
+  const text = `*${S.name}* — ${T.fmtDate(TODAY)}\n` + list.map(t => '• ' + t.desc.trim()).join('\n');
+  $('send').disabled = true; setStatus('Sending…');
   try {
-    for (let i = 0; i < msgs.length; i++) {
-      setStatus(`Sending ${i + 1}/${msgs.length}…`);
-      // text/plain keeps this a "simple" request (no CORS preflight); Chat still parses the JSON body.
-      await fetch(hook, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify(msgs[i]) });
-      if (i < msgs.length - 1) await new Promise(r => setTimeout(r, 1200)); // space quota: 1 req/sec
-    }
-    setStatus('Sent! Check your Chat space. (Browsers hide the reply, so verify there.)', 'ok');
-  } catch (e) {
-    setStatus('Network error: ' + e.message, 'err');
-  } finally { $('send').disabled = false; }
+    // text/plain keeps this a simple CORS request (no preflight); Chat still parses the JSON.
+    await fetch(S.hook, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify({ text }) });
+    S.lastSent = TODAY; save(); setStatus(`Sent ${list.length} task(s) ✓`, 'ok');
+  } catch (e) { setStatus('Network error: ' + e.message, 'err'); }
+  $('send').disabled = false;
+};
+
+// ---------- Excel ----------
+$('dl').onclick = async () => {
+  if (!window.ExcelJS) return setStatus('Excel library not loaded (offline?).', 'err');
+  const ym = $('month').value || TODAY.slice(0, 7);
+  const ordered = S.tasks.map((t, i) => [t, i]).sort((a, b) => a[0].date.localeCompare(b[0].date) || a[1] - b[1]).map(x => x[0]);
+  const wb = T.buildWorkbook(ExcelJS, { tasks: ordered, days: S.days, name: S.name, empId: S.empId, ym });
+  const buf = await wb.xlsx.writeBuffer();
+  const [y, m] = ym.split('-');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  a.download = `Timesheet_${(S.name || 'me').replace(/\s+/g, '_')}_${T.MON[+m - 1]}-${y}.xlsx`;
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  setStatus('Downloaded ✓', 'ok');
+};
+$('up').onclick = () => $('file').click();
+$('file').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  if (!window.ExcelJS) return setStatus('Excel library not loaded (offline?).', 'err');
+  try {
+    const r = await T.parseWorkbook(ExcelJS, await f.arrayBuffer());
+    const dts = new Set([...r.tasks.map(t => t.date), ...Object.keys(r.days)]);
+    if (!dts.size) return setStatus('No tasks found in that file.', 'err');
+    if (!confirm(`Import ${r.tasks.length} task(s) across ${dts.size} day(s)?\nExisting tasks on those dates will be replaced.`)) return;
+    S.tasks = S.tasks.filter(t => !dts.has(t.date));
+    r.tasks.forEach(t => S.tasks.push({ id: uid(), ...t }));
+    dts.forEach(d => { if (!S.mat.includes(d)) S.mat.push(d); delete S.days[d]; });
+    Object.assign(S.days, r.days);
+    if (!S.name && r.name) { S.name = r.name; $('name').value = r.name; who(); }
+    if (!S.empId && r.empId) { S.empId = r.empId; $('empId').value = r.empId; }
+    save(); const first = [...dts].sort().pop(); $('month').value = first.slice(0, 7); showAll = false; render();
+    setStatus(`Imported ${r.tasks.length} task(s) ✓`, 'ok');
+  } catch (err) { setStatus('Import failed: ' + err.message, 'err'); }
 };
 
 render();
