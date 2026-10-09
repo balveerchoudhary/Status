@@ -94,12 +94,14 @@
   #toast button { min-height:30px; padding:0 10px; background:rgba(255,255,255,.2); }
   .more { width:100%; }
   .gi { width:20px; height:20px; vertical-align:-5px; flex:0 0 auto; }
-  .r3 { display:grid; grid-template-columns:128px 1fr auto; gap:6px; align-items:center; }
-  .r3 input[type=date] { font-size:14px; padding:8px 4px; min-width:0; }
-  .r2d { display:grid; grid-template-columns:1fr auto; gap:6px; align-items:center; }
+  .r3 { display:grid; grid-template-columns:112px minmax(0,1fr) 38px auto; gap:5px; align-items:center; }
+  .r3 input[type=date] { font-size:13px; padding:8px 2px; min-width:0; }
+  .r3 input, .r2d input:not([readonly]) { font-size:14px; }
+  .r2d { display:grid; grid-template-columns:minmax(0,1fr) 38px 38px auto; gap:5px; align-items:center; }
+  .r3 .tg, .r2d .tg { flex:none; width:38px; }
   .step { display:flex; align-items:center; background:var(--soft); border-radius:10px; }
-  .step button { min-width:36px; min-height:42px; padding:0; background:transparent; color:var(--primary); font-size:22px; }
-  .step input { width:40px; min-height:42px; border:0; padding:0; text-align:center; font-weight:700; background:transparent; pointer-events:none; }
+  .step button { min-width:30px; min-height:42px; padding:0; background:transparent; color:var(--primary); font-size:22px; }
+  .step input { width:34px; min-height:42px; border:0; padding:0; text-align:center; font-weight:700; background:transparent; pointer-events:none; }
   .pill { display:inline-flex; margin:0; cursor:pointer; }
   .pill input { display:none; }
   .pill span { display:inline-flex; align-items:center; gap:6px; min-height:40px; padding:0 12px; border-radius:99px; border:2px solid var(--line); font-size:14px; font-weight:600; color:var(--muted); }
@@ -107,6 +109,7 @@
   .pill input:checked + span { border-color:#00ac47; background:var(--green); color:var(--text); }
   .pill input:checked + span .gi { filter:none; opacity:1; }
   .pill.daily input:checked + span { border-color:var(--primary); background:var(--soft); }
+  .tg.daily input:checked + span { background:var(--soft); box-shadow:inset 0 0 0 2px var(--primary); opacity:1; }
   .tg.chat input:checked + span { background:var(--green); box-shadow:inset 0 0 0 2px #00ac47; }
   .tg.chat .gi { filter:grayscale(1); } .tg.chat input:checked + span .gi { filter:none; }
   .armed { background:var(--danger) !important; color:#fff !important; }
@@ -132,12 +135,10 @@
       <div class="r3">
         <input id="date" type="date" aria-label="Date">
         <input id="sub" placeholder="Sub task" list="subList" aria-label="Sub task">
+        <label class="tg chat" title="Send to Chat"><input type="checkbox" id="chat" checked><span><svg class="gi"><use href="#gchat"/></svg></span></label>
         <div class="step"><button type="button" id="hMinus" aria-label="Less">−</button><input id="hrs" value="0.5" readonly aria-label="Hours"><button type="button" id="hPlus" aria-label="More">+</button></div>
       </div>
-      <div class="frow">
-        <label class="pill"><input type="checkbox" id="chat" checked><span><svg class="gi"><use href="#gchat"/></svg> Send to Chat</span></label>
-        <button type="submit">＋ Add task</button>
-      </div>
+      <button type="submit">＋ Add task</button>
       <div id="hint"></div>
     </form>
     <datalist id="subList"></datalist>
@@ -155,12 +156,10 @@
     <form id="dForm" class="fgrid" style="margin-top:12px;padding-top:12px;border-top:2px solid var(--line)" autocomplete="off">
       <input id="dDesc" placeholder="New default, e.g. Participated in Daily Scrum" required>
       <div class="r2d">
-        <input id="dSub" placeholder="Sub task (optional)">
+        <input id="dSub" placeholder="Sub task">
+        <label class="tg daily" title="Add every weekday"><input type="checkbox" id="dOn" checked><span>🔁</span></label>
+        <label class="tg chat" title="Send to Chat"><input type="checkbox" id="dChat" checked><span><svg class="gi"><use href="#gchat"/></svg></span></label>
         <div class="step"><button type="button" id="dMinus" aria-label="Less">−</button><input id="dHrs" value="0.5" readonly aria-label="Hours"><button type="button" id="dPlus" aria-label="More">+</button></div>
-      </div>
-      <div class="frow">
-        <label class="pill daily"><input type="checkbox" id="dOn" checked><span>🔁 Every weekday</span></label>
-        <label class="pill"><input type="checkbox" id="dChat" checked><span><svg class="gi"><use href="#gchat"/></svg> Send to Chat</span></label>
       </div>
       <button type="submit">＋ Add default</button>
     </form>
