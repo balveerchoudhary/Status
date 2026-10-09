@@ -5,21 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#4472c4">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
+<script>try { var t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
 <title>Daily Status Reporter</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script src="timesheet.js"></script>
 <style>
   :root { --bg:#f3f5fb; --card:#fff; --text:#1f2937; --muted:#6b7280; --line:#e5e7eb; --primary:#4472c4; --primary-d:#2f56a0;
           --ok:#16a34a; --danger:#dc2626; --green:#e3f8ec; --yellow:#fff9c4; --soft:#eef2fb; --amber:#f59e0b; }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg:#0f1420; --card:#181f2e; --text:#e5e7eb; --muted:#9ca3af; --line:#2a3347; --green:#16352a; --yellow:#3b3715; --soft:#1f2940; }
-  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0f1420; --card:#181f2e; --text:#e5e7eb; --muted:#9ca3af; --line:#2a3347; --green:#16352a; --yellow:#3b3715; --soft:#1f2940; color-scheme:dark; } }
+  :root[data-theme="dark"] { --bg:#0f1420; --card:#181f2e; --text:#e5e7eb; --muted:#9ca3af; --line:#2a3347; --green:#16352a; --yellow:#3b3715; --soft:#1f2940; color-scheme:dark; }
+  #theme { flex:none; min-height:38px; min-width:38px; padding:0; font-size:18px; background:rgba(255,255,255,.2); }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   body { margin:0; background:var(--bg); color:var(--text); font:16px/1.4 system-ui,Segoe UI,Roboto,sans-serif; padding-bottom:calc(100px + env(safe-area-inset-bottom)); }
   header { background:linear-gradient(135deg,#4472c4,#2f56a0); color:#fff; padding:14px 16px; display:flex; flex-wrap:nowrap; justify-content:space-between; align-items:center; gap:10px; }
-  header h1 { margin:0; font-size:16px; white-space:nowrap; flex:none; display:flex; align-items:center; gap:10px; }
-  .logo { height:20px; width:auto; display:block; } header small { opacity:.9; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  header h1 { margin:0; font-size:18px; white-space:nowrap; flex:none; }
+  header small { flex:1; text-align:right; font-size:14px; font-weight:600; opacity:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   @media (max-width:480px) { .yr, .sprintb { display:none; } }
+  @media (max-width:400px) { .ttl { display:none; } }
   main { max-width:760px; margin:0 auto; padding:12px; display:grid; gap:12px; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px; }
   label { display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:3px; }
@@ -125,8 +127,9 @@
   <rect x="7" y="7" width="10" height="2.2" rx="1.1" fill="#fff"/><rect x="7" y="11" width="6.5" height="2.2" rx="1.1" fill="#fff"/>
 </symbol></svg>
 <header>
-  <h1><img class="logo" src="logo.png" alt="Continuous"><span>Daily Status</span></h1>
+  <h1>📋 <span class="ttl">Daily Status</span></h1>
   <small id="who"></small>
+  <button id="theme" type="button" aria-label="Switch light / dark mode"></button>
 </header>
 
 <main>
@@ -231,6 +234,17 @@ function ensureDefaults(date) {   // add the active defaults the first time a we
 }
 ensureDefaults(TODAY); save();
 
+// ---------- light / dark switch ----------
+const effTheme = () => document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+function paintTheme() { const d = effTheme() === 'dark'; $('theme').textContent = d ? '☀️' : '🌙'; $('theme').title = d ? 'Switch to light mode' : 'Switch to dark mode'; }
+$('theme').onclick = () => {
+  const next = effTheme() === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem('theme', next); } catch {}
+  paintTheme();
+};
+paintTheme();
+
 // ---------- toast ----------
 let tt;
 function toast(msg, cls, undo) {
@@ -241,7 +255,7 @@ function toast(msg, cls, undo) {
 
 // ---------- settings (one-time, bottom of page) ----------
 $('name').value = S.name; $('hook').value = S.hook;
-const who = () => { $('who').textContent = S.name; };
+const who = () => { $('who').textContent = S.name ? '👤 ' + S.name : ''; };
 const setupOk = () => S.name && /^https:\/\/chat\.googleapis\.com\//.test(S.hook);
 const showSettings = () => { $('setBox').open = true; $('setBox').scrollIntoView({ behavior: 'smooth', block: 'center' }); };
 $('name').oninput = e => { S.name = e.target.value.trim(); save(); who(); $('notice').hidden = !!setupOk(); };
