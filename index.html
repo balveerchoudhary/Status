@@ -160,6 +160,12 @@
       <button id="setSave" type="button">Save settings</button>
       <small class="m">Saved only in this browser, once.</small>
     </div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
+      <label>🌴 Add leave day(s) — creates a "Leave" entry with 0 hours</label>
+      <div class="grid2"><input id="lvFrom" type="date" aria-label="Leave from"><input id="lvTo" type="date" aria-label="Leave to (optional)"></div>
+      <small class="m">"To" is optional. For a range, weekends are skipped.</small>
+      <button id="addLeave" type="button" style="width:100%;margin-top:8px">＋ Add leave</button>
+    </div>
     <div style="display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
       <button id="clrAll" type="button" class="ghost" style="flex:1;color:var(--danger)">🗑 Clear all entries</button>
       <button id="clrDef" type="button" class="ghost" style="flex:1;color:var(--danger)">🗑 Clear defaults</button>
@@ -335,15 +341,34 @@ days.addEventListener('click', e => {
   }
   const b = e.target.closest('[data-act="del"]'); if (!b) return;
   const i = S.tasks.findIndex(x => x.id === b.closest('.trow').dataset.id), t = S.tasks[i];
-  S.tasks.splice(i, 1); save(); render();
-  toast('Task deleted', '', () => { S.tasks.splice(i, 0, t); save(); render(); });
+  S.tasks.splice(i, 1);
+  if (t.leave && S.days[t.date] === 'leave') { delete S.days[t.date]; S.mat = S.mat.filter(x => x !== t.date); ensureDefaults(t.date); }
+  save(); render();
+  toast('Task deleted', '', () => { S.tasks.splice(i, 0, t); if (t.leave) S.days[t.date] = 'leave'; save(); render(); });
 });
+const leaveTask = d => ({ id: uid(), date: d, ctx: T.sprintFor(d), sub: '', desc: 'Leave', hrs: 0, chat: false, leave: true });
 function setMark(d, v) {
   S.mat = S.mat.filter(x => x !== d);
+  S.tasks = S.tasks.filter(t => !(t.date === d && t.leave));          // at most one Leave entry per day
   if (v) { S.days[d] = v; S.tasks = S.tasks.filter(t => !(t.date === d && t.def)); }
   else { delete S.days[d]; ensureDefaults(d); }
+  if (v === 'leave') S.tasks.push(leaveTask(d));
   save(); render();
 }
+$('lvFrom').value = TODAY;
+$('addLeave').onclick = () => {
+  const from = $('lvFrom').value, to = $('lvTo').value || from; if (!from) return toast('Pick a leave date', 'err');
+  if (to < from) return toast('"To" is before "From"', 'err');
+  let n = 0;
+  for (let ms = T.utc(from); ms <= T.utc(to) && n < 62; ms += 864e5) {
+    const d = T.fromUtc(ms);
+    if (from !== to && [0, 6].includes(T.dow(d))) continue;
+    S.mat = S.mat.filter(x => x !== d); S.tasks = S.tasks.filter(t => !(t.date === d && (t.leave || t.def)));
+    S.days[d] = 'leave'; S.tasks.push(leaveTask(d)); openDays.add(d); n++;
+  }
+  save(); $('month').value = from.slice(0, 7); showAll = false; render(); $('lvTo').value = '';
+  toast(n + ' leave day' + (n === 1 ? '' : 's') + ' added', 'ok');
+};
 
 // ---------- drag to move (pointer events: touch + mouse) ----------
 let drag = null;
