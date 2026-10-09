@@ -9,37 +9,41 @@
 <script src="timesheet.js"></script>
 <style>
   :root { --bg:#f3f5fb; --card:#fff; --text:#1f2937; --muted:#6b7280; --line:#e5e7eb; --primary:#4472c4; --primary-d:#2f56a0;
-          --ok:#16a34a; --danger:#dc2626; --green:#e3f8ec; --yellow:#fff9c4; --soft:#eef2fb; }
+          --ok:#16a34a; --danger:#dc2626; --green:#e3f8ec; --yellow:#fff9c4; --soft:#eef2fb; --amber:#f59e0b; }
   @media (prefers-color-scheme: dark) {
     :root { --bg:#0f1420; --card:#181f2e; --text:#e5e7eb; --muted:#9ca3af; --line:#2a3347; --green:#16352a; --yellow:#3b3715; --soft:#1f2940; }
   }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.4 system-ui,Segoe UI,Roboto,sans-serif; padding-bottom:calc(150px + env(safe-area-inset-bottom)); }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.4 system-ui,Segoe UI,Roboto,sans-serif; padding-bottom:calc(100px + env(safe-area-inset-bottom)); }
   header { background:linear-gradient(135deg,#4472c4,#2f56a0); color:#fff; padding:14px 16px; display:flex; justify-content:space-between; align-items:center; gap:10px; }
   header h1 { margin:0; font-size:18px; } header small { opacity:.9; }
   main { max-width:760px; margin:0 auto; padding:12px; display:grid; gap:12px; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px; }
   label { display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:3px; }
-  input, textarea, select { width:100%; min-height:44px; padding:9px 10px; border:1px solid var(--line); border-radius:10px; background:transparent; color:var(--text); font:inherit; }
+  input, textarea, select { width:100%; min-height:42px; padding:8px 9px; border:1px solid var(--line); border-radius:10px; background:transparent; color:var(--text); font:inherit; }
   textarea { resize:none; overflow:hidden; display:block; }
   select option { color:#000; }
   input:focus, textarea:focus, select:focus { outline:2px solid var(--primary); border-color:transparent; }
   button { cursor:pointer; border:0; border-radius:10px; min-height:44px; padding:0 14px; font:inherit; font-weight:600; background:var(--primary); color:#fff; }
-  button:active { filter:brightness(.9); }
-  button:disabled { opacity:.6; }
+  button:active { filter:brightness(.9); } button:disabled { opacity:.6; }
   button.ghost { background:var(--soft); color:var(--primary); }
   small.m { color:var(--muted); }
+  #notice { background:var(--yellow); border-radius:12px; padding:10px 12px; font-size:14px; }
+  #notice a { color:var(--primary); font-weight:600; }
 
-  /* add form */
-  #form { display:grid; gap:8px; }
-  .chips { display:flex; gap:6px; align-items:center; }
-  .chip { min-height:38px; min-width:46px; padding:0 8px; background:var(--soft); color:var(--text); font-weight:600; }
-  .chip.on { background:var(--primary); color:#fff; }
-  .chips input { width:76px; min-height:38px; text-align:center; margin-left:auto; }
+  /* add forms */
+  .fgrid { display:grid; gap:8px; }
   .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .chips { display:flex; gap:6px; align-items:center; }
+  .chip { min-height:40px; min-width:46px; padding:0 8px; background:var(--soft); color:var(--text); font-weight:600; }
+  .chip.on { background:var(--primary); color:#fff; }
+  .chips input { flex:1; min-width:0; min-height:40px; text-align:center; }
+  .chk { display:flex; align-items:center; gap:8px; font-size:14px; font-weight:500; color:var(--text); margin:0; min-height:36px; }
+  .chk input { width:22px; height:22px; min-height:0; padding:0; accent-color:var(--primary); }
+  .frow { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .frow button { margin-left:auto; min-width:120px; }
   #hint { font-size:12px; color:var(--muted); }
 
-  /* month bar */
   .bar { display:flex; gap:10px; align-items:center; }
   .bar input { flex:1; } #mtotal { font-weight:700; white-space:nowrap; }
 
@@ -55,26 +59,35 @@
   .dayhead select { width:auto; min-height:34px; padding:2px 6px; font-size:13px; }
   .empty { padding:16px; color:var(--muted); text-align:center; }
 
-  .trow { display:grid; grid-template-columns:40px 1fr; gap:4px 4px; padding:10px 10px 10px 2px; border-top:1px solid var(--line); background:var(--card); }
-  .trow.def { border-left:4px solid #9ca3af; }
+  /* one-line task row: grip | description | sub | hours | x */
+  .trow { display:flex; gap:4px; align-items:flex-start; padding:6px 6px 6px 0; border-top:1px solid var(--line); background:var(--card); border-left:3px solid transparent; }
+  .trow.nochat { border-left-color:var(--amber); }
   .trow.moving { background:var(--soft); box-shadow:0 6px 18px rgba(0,0,0,.3); position:relative; z-index:2; }
-  .grip { grid-row:1 / span 2; display:flex; align-items:center; justify-content:center; font-size:24px; color:var(--muted); cursor:grab; touch-action:none; user-select:none; }
-  .r2 { display:flex; gap:6px; align-items:center; }
-  .r2 [data-f=sub] { flex:1; min-width:0; min-height:40px; } .r2 [data-f=hrs] { width:66px; min-height:40px; text-align:center; padding:9px 2px; }
-  .r2 .ico { min-width:36px; min-height:40px; padding:0; background:transparent; color:var(--muted); font-size:16px; }
-  .r2 .ico.del { color:var(--danger); }
-  .tag { grid-column:2; font-size:11px; color:var(--muted); }
+  .grip { flex:0 0 28px; height:42px; display:flex; align-items:center; justify-content:center; font-size:20px; color:var(--muted); cursor:grab; touch-action:none; user-select:none; }
+  .trow textarea { flex:1; min-width:0; min-height:42px; font-size:15px; padding:9px 8px; }
+  .trow [data-f=sub] { flex:0 0 72px; font-size:14px; padding:8px 6px; }
+  .trow [data-f=hrs] { flex:0 0 52px; text-align:center; padding:8px 2px; font-size:15px; }
+  .x { flex:0 0 32px; min-height:42px; padding:0; background:transparent; color:var(--danger); font-size:16px; }
+  .legend { font-size:11px; color:var(--muted); padding:6px 12px; border-top:1px solid var(--line); }
+  .legend i { display:inline-block; width:10px; height:10px; background:var(--amber); border-radius:2px; vertical-align:-1px; }
 
-  /* defaults */
-  .drow { display:grid; grid-template-columns:1fr auto; gap:4px 10px; align-items:center; padding:8px 0; border-top:1px solid var(--line); }
-  .drow .opts { grid-column:1 / -1; display:flex; gap:16px; flex-wrap:wrap; }
-  .chk { display:flex; align-items:center; gap:8px; font-size:14px; font-weight:500; color:var(--text); margin:0; min-height:36px; }
-  .chk input { width:22px; height:22px; min-height:0; accent-color:var(--primary); }
+  /* defaults list rows: desc | sub | hrs | daily | chat | x */
+  .dhead, .drow { display:flex; gap:4px; align-items:center; }
+  .dhead { font-size:11px; color:var(--muted); padding:0 0 4px; }
+  .drow { padding:5px 0; border-top:1px solid var(--line); align-items:flex-start; }
+  .dhead span:nth-child(1), .drow textarea { flex:1; min-width:0; }
+  .drow textarea { min-height:42px; font-size:15px; padding:9px 8px; }
+  .drow [data-k=sub], .dhead .c2 { flex:0 0 64px; font-size:14px; padding:8px 6px; }
+  .drow [data-k=hrs], .dhead .c3 { flex:0 0 48px; text-align:center; padding:8px 2px; font-size:15px; }
+  .dhead .c4, .dhead .c5 { flex:0 0 36px; text-align:center; } .dhead .c6 { flex:0 0 32px; }
+  .tg { flex:0 0 36px; margin:0; } .tg input { display:none; }
+  .tg span { display:flex; align-items:center; justify-content:center; height:42px; border-radius:10px; background:var(--soft); opacity:.45; font-size:17px; }
+  .tg input:checked + span { background:var(--primary); opacity:1; }
   details summary { cursor:pointer; font-weight:600; min-height:32px; display:flex; align-items:center; gap:6px; }
   details[open] summary { margin-bottom:8px; }
 
   .dock { position:fixed; left:0; right:0; bottom:0; display:flex; gap:8px; padding:10px 12px calc(10px + env(safe-area-inset-bottom)); background:var(--card); border-top:1px solid var(--line); z-index:5; max-width:760px; margin:0 auto; }
-  .dock button { min-height:50px; } #send { flex:1; font-size:16px; } #dl { flex:0 0 auto; padding:0 18px; }
+  .dock button { min-height:50px; } #dl { flex:0 0 auto; padding:0 18px; } #send { flex:1; font-size:16px; }
   #toast { position:fixed; left:50%; bottom:calc(84px + env(safe-area-inset-bottom)); transform:translate(-50%,20px); background:#111827; color:#fff; padding:10px 14px; border-radius:12px; display:flex; gap:12px; align-items:center; opacity:0; pointer-events:none; transition:.2s; z-index:9; max-width:92vw; font-size:14px; }
   #toast.show { opacity:1; transform:translate(-50%,0); pointer-events:auto; }
   #toast.ok { background:#166534; } #toast.err { background:#b91c1c; }
@@ -89,33 +102,24 @@
 </header>
 
 <main>
-  <details class="card" id="setBox">
-    <summary>⚙ Settings <small id="setNote" class="m" style="font-weight:400">— one-time setup</small></summary>
-    <div class="grid2">
-      <div><label for="name">Your name *</label><input id="name" placeholder="Balveer Choudhary"></div>
-      <div><label for="empId">Employee Id *</label><input id="empId" placeholder="E25/2703"></div>
-    </div>
-    <label for="hook" style="margin-top:8px">Google Chat webhook URL *</label>
-    <input id="hook" type="password">
-    <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
-      <button id="setSave" type="button">Save settings</button>
-      <small class="m">Saved only in this browser, once.</small>
-    </div>
-  </details>
+  <div id="notice" hidden>👋 First time here? <a href="#setBox" id="goSet">Complete Settings ↓</a> (your name, one time).</div>
 
   <section class="card">
-    <form id="form" autocomplete="off">
+    <form id="form" class="fgrid" autocomplete="off">
       <textarea id="desc" rows="2" placeholder="What did you work on?" enterkeyhint="done" required></textarea>
+      <div class="grid2">
+        <input id="date" type="date" aria-label="Date">
+        <input id="sub" placeholder="Sub task (AVID-50)" list="subList" aria-label="Sub task">
+      </div>
       <div class="chips" id="chips">
         <button type="button" class="chip" data-h="0.5">0.5</button><button type="button" class="chip" data-h="1">1</button>
         <button type="button" class="chip" data-h="2">2</button><button type="button" class="chip" data-h="3">3</button>
-        <input id="hrs" type="number" inputmode="decimal" step="0.25" min="0" value="1" aria-label="Hours">
+        <input id="hrs" type="number" inputmode="decimal" step="0.25" min="0" value="1" placeholder="custom" aria-label="Hours">
       </div>
-      <div class="grid2">
-        <input id="sub" placeholder="Sub (e.g. AVID-50)" list="subList" aria-label="Task sub context">
-        <input id="date" type="date" aria-label="Date">
+      <div class="frow">
+        <label class="chk"><input type="checkbox" id="chat" checked> Send to Chat</label>
+        <button type="submit">＋ Add task</button>
       </div>
-      <button type="submit">＋ Add task</button>
       <div id="hint"></div>
     </form>
     <datalist id="subList"></datalist>
@@ -128,20 +132,46 @@
 
   <details class="card" id="defsBox">
     <summary>🔁 Daily defaults <small class="m" style="font-weight:400">— recurring tasks like meetings</small></summary>
+    <div class="dhead"><span>Description</span><span class="c2">Sub</span><span class="c3">Hrs</span><span class="c4" title="Add every weekday">🔁</span><span class="c5" title="Send to Chat">💬</span><span class="c6"></span></div>
     <div id="defs"></div>
-    <div style="display:grid;gap:8px;margin-top:10px">
-      <input id="dDesc" placeholder="e.g. Participated in Daily Scrum">
-      <div class="grid2"><input id="dSub" placeholder="Sub (optional)"><input id="dHrs" type="number" inputmode="decimal" step="0.25" value="0.5" aria-label="Hours"></div>
-      <label class="chk"><input type="checkbox" id="dChat"> Send to Chat</label>
-      <button id="dAdd" type="button">＋ Add default</button>
+    <form id="dForm" class="fgrid" style="margin-top:12px;padding-top:12px;border-top:2px solid var(--line)" autocomplete="off">
+      <input id="dDesc" placeholder="New default, e.g. Participated in Daily Scrum" required>
+      <input id="dSub" placeholder="Sub task (optional)">
+      <div class="chips" id="dChips">
+        <button type="button" class="chip" data-h="0.5">0.5</button><button type="button" class="chip" data-h="1">1</button>
+        <button type="button" class="chip" data-h="2">2</button><button type="button" class="chip" data-h="3">3</button>
+        <input id="dHrs" type="number" inputmode="decimal" step="0.25" min="0" value="0.5" placeholder="custom" aria-label="Hours">
+      </div>
+      <div class="frow">
+        <label class="chk"><input type="checkbox" id="dOn" checked> Add every weekday</label>
+        <label class="chk"><input type="checkbox" id="dChat" checked> Send to Chat</label>
+      </div>
+      <button type="submit">＋ Add default</button>
+    </form>
+  </details>
+
+  <details class="card" id="setBox">
+    <summary>⚙ Settings <small id="setNote" class="m" style="font-weight:400">— one-time setup</small></summary>
+    <label for="name">Your name *</label>
+    <input id="name" placeholder="Balveer Choudhary">
+    <label for="hook" style="margin-top:8px">Google Chat webhook URL *</label>
+    <input id="hook" type="password">
+    <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+      <button id="setSave" type="button">Save settings</button>
+      <small class="m">Saved only in this browser, once.</small>
     </div>
+    <div style="display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
+      <button id="clrAll" type="button" class="ghost" style="flex:1;color:var(--danger)">🗑 Clear all entries</button>
+      <button id="clrDef" type="button" class="ghost" style="flex:1;color:var(--danger)">🗑 Clear defaults</button>
+    </div>
+    <small class="m">Clearing entries keeps your daily defaults. Clearing defaults keeps your entries.</small>
   </details>
 </main>
 
 <div id="toast"><span id="tmsg"></span><button id="tact" hidden>Undo</button></div>
 <div class="dock">
+  <button id="dl" class="ghost">⬇ Timesheet</button>
   <button id="send">📤 Send today to Chat</button>
-  <button id="dl" class="ghost">⬇ Excel</button>
 </div>
 
 <script>
@@ -158,20 +188,22 @@ const TODAY = T.isoLocal(new Date());
 
 // ---------- state ----------
 function blank() {
-  return { name: '', empId: '', hook: DEFAULT_HOOK, tasks: [], days: {}, mat: [], lastSent: '',
+  return { name: '', hook: DEFAULT_HOOK, tasks: [], days: {}, mat: [], lastSent: '',
            defaults: [{ id: uid(), desc: 'Participated in Daily Scrum', sub: '', hrs: 0.5, on: true, chat: false }] };
 }
 let S = Object.assign(blank(), store.get('v2', null));
+S.defaults.forEach(d => { d.chat = !!d.chat; if (d.on === undefined) d.on = true; });
+S.tasks.forEach(t => { if (t.chat === undefined) t.chat = t.def ? !!(S.defaults.find(d => d.id === t.defId) || {}).chat : true; });
 const save = () => store.set('v2', S);
 const isWorkday = d => ![0, 6].includes(T.dow(d)) && !S.days[d];
-const defTask = (d, date) => ({ id: uid(), date, ctx: T.sprintFor(date), sub: d.sub || '', desc: d.desc, hrs: d.hrs, def: true, defId: d.id });
-const sentFlag = t => t.def ? !!(S.defaults.find(d => d.id === t.defId) || {}).chat : true;
+const defTask = (d, date) => ({ id: uid(), date, ctx: T.sprintFor(date), sub: d.sub || '', desc: d.desc, hrs: d.hrs, def: true, defId: d.id, chat: !!d.chat });
+const sentFlag = t => t.chat !== false;
 
 function ensureDefaults(date) {   // add the active defaults the first time a weekday is used
   if (S.mat.includes(date)) return;
   S.mat.push(date);
   if (!isWorkday(date)) return;
-  S.defaults.filter(d => d.on !== false).forEach(d => S.tasks.push(defTask(d, date)));
+  S.defaults.filter(d => d.on).forEach(d => S.tasks.push(defTask(d, date)));
 }
 ensureDefaults(TODAY); save();
 
@@ -183,33 +215,41 @@ function toast(msg, cls, undo) {
   clearTimeout(tt); tt = setTimeout(() => { $('toast').className = ''; }, undo ? 5000 : 2200);
 }
 
-// ---------- settings (one-time) ----------
-$('name').value = S.name; $('empId').value = S.empId; $('hook').value = S.hook;
+// ---------- settings (one-time, bottom of page) ----------
+$('name').value = S.name; $('hook').value = S.hook;
 const who = () => { $('who').textContent = S.name; };
-const setupOk = () => S.name && S.empId && /^https:\/\/chat\.googleapis\.com\//.test(S.hook);
-$('name').oninput = e => { S.name = e.target.value.trim(); save(); who(); };
-$('empId').oninput = e => { S.empId = e.target.value.trim(); save(); };
-$('hook').oninput = e => { S.hook = e.target.value.trim(); save(); };
-$('setBox').open = !setupOk(); who();
+const setupOk = () => S.name && /^https:\/\/chat\.googleapis\.com\//.test(S.hook);
+const showSettings = () => { $('setBox').open = true; $('setBox').scrollIntoView({ behavior: 'smooth', block: 'center' }); };
+$('name').oninput = e => { S.name = e.target.value.trim(); save(); who(); $('notice').hidden = !!setupOk(); };
+$('hook').oninput = e => { S.hook = e.target.value.trim(); save(); $('notice').hidden = !!setupOk(); };
+$('setBox').open = !setupOk(); $('notice').hidden = !!setupOk(); who();
+$('goSet').onclick = e => { e.preventDefault(); showSettings(); };
 $('setSave').onclick = () => {
   const n = $('setNote');
-  if (!setupOk()) { n.textContent = '— name, Employee Id and a valid webhook URL are required'; n.style.color = 'var(--danger)'; return; }
+  if (!setupOk()) { n.textContent = '— your name and a valid webhook URL are required'; n.style.color = 'var(--danger)'; return; }
   n.textContent = '— saved ✓'; n.style.color = 'var(--ok)'; $('setBox').open = false;
 };
 
+// ---------- shared helpers ----------
+function wireChips(boxId, inputId) {
+  const box = $(boxId), inp = $(inputId);
+  const sync = () => box.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', +c.dataset.h === parseFloat(inp.value)));
+  box.onclick = e => { const c = e.target.closest('.chip'); if (c) { inp.value = c.dataset.h; sync(); } };
+  inp.addEventListener('input', sync); sync();
+  return sync;
+}
+const syncHrs = wireChips('chips', 'hrs'), syncDHrs = wireChips('dChips', 'dHrs');
+function autosize(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 2 + 'px'; }
+
 // ---------- add task ----------
 $('date').value = TODAY; $('month').value = TODAY.slice(0, 7);
-function syncChips() { document.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', +c.dataset.h === parseFloat($('hrs').value))); }
-$('chips').onclick = e => { const c = e.target.closest('.chip'); if (c) { $('hrs').value = c.dataset.h; syncChips(); } };
-$('hrs').oninput = syncChips; syncChips();
-function autosize(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 2 + 'px'; }
 $('desc').addEventListener('input', e => autosize(e.target));
 $('desc').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('form').requestSubmit(); } });
 $('date').onchange = refreshForm;
-$('sub').onchange = () => {     // reuse the last entry for this sub context
+$('sub').onchange = () => {     // reuse the last entry for this sub task
   const v = $('sub').value.trim(); if (!v || $('desc').value.trim()) return;
   const t = [...S.tasks].reverse().find(x => x.sub === v && !x.def); if (!t) return;
-  $('desc').value = t.desc; $('hrs').value = t.hrs; syncChips(); autosize($('desc'));
+  $('desc').value = t.desc; $('hrs').value = t.hrs; syncHrs(); autosize($('desc'));
 };
 function refreshForm() {
   const subs = [], seen = new Set();
@@ -222,8 +262,8 @@ $('form').onsubmit = e => {
   e.preventDefault();
   const date = $('date').value || TODAY, desc = $('desc').value.trim(); if (!desc) return;
   ensureDefaults(date);
-  S.tasks.push({ id: uid(), date, ctx: T.sprintFor(date), sub: $('sub').value.trim(), desc, hrs: parseFloat($('hrs').value) || 0 });
-  save(); $('sub').value = ''; $('desc').value = ''; autosize($('desc'));
+  S.tasks.push({ id: uid(), date, ctx: T.sprintFor(date), sub: $('sub').value.trim(), desc, hrs: parseFloat($('hrs').value) || 0, chat: $('chat').checked });
+  save(); $('sub').value = ''; $('desc').value = ''; $('chat').checked = true; autosize($('desc'));
   openDays.add(date); $('month').value = date.slice(0, 7);
   render(); $('desc').focus(); toast('Task added', 'ok');
 };
@@ -260,20 +300,16 @@ function dayHtml(d) {
       <select class="mark" aria-label="Day status"><option value="">Working</option><option value="leave"${sel('leave')}>Leave</option><option value="off"${sel('off')}>Off / Holiday</option></select>
     </div>
     ${open ? (list.map(rowHtml).join('') || '<div class="empty">No tasks yet</div>') : ''}
+    ${open && list.some(t => !sentFlag(t)) ? '<div class="legend"><i></i> not sent to Chat (still in Timesheet)</div>' : ''}
   </section>`;
 }
 function rowHtml(t) {
-  const d = t.def ? S.defaults.find(x => x.id === t.defId) : null;
-  return `<div class="trow ${t.def ? 'def' : ''}" data-id="${t.id}">
+  return `<div class="trow ${sentFlag(t) ? '' : 'nochat'}" data-id="${t.id}">
     <span class="grip" title="Drag to move">⠿</span>
     <textarea data-f="desc" rows="1" aria-label="Description">${esc(t.desc)}</textarea>
-    <div class="r2">
-      <input data-f="sub" value="${esc(t.sub)}" placeholder="Sub context" aria-label="Sub context">
-      <input data-f="hrs" type="number" inputmode="decimal" step="0.25" min="0" value="${t.hrs}" aria-label="Hours">
-      <button class="ico" data-act="up" title="Move up">▲</button><button class="ico" data-act="down" title="Move down">▼</button>
-      <button class="ico" data-act="again" title="Copy to today">⧉</button><button class="ico del" data-act="del" title="Delete">✕</button>
-    </div>
-    ${t.def ? `<span class="tag">🔁 daily default · ${d && d.chat ? 'sent to Chat' : 'not sent to Chat'}</span>` : ''}
+    <input data-f="sub" value="${esc(t.sub)}" placeholder="Sub" aria-label="Sub task">
+    <input data-f="hrs" type="number" inputmode="decimal" step="0.25" min="0" value="${t.hrs}" aria-label="Hours">
+    <button class="x" data-act="del" title="Delete">✕</button>
   </div>`;
 }
 function updateTotals() {
@@ -297,20 +333,10 @@ days.addEventListener('click', e => {
   if (head && !e.target.closest('select')) {
     const d = head.parentNode.dataset.date; openDays.has(d) ? openDays.delete(d) : openDays.add(d); return render();
   }
-  const b = e.target.closest('[data-act]'); if (!b) return;
-  const id = b.closest('.trow').dataset.id, i = S.tasks.findIndex(x => x.id === id), t = S.tasks[i], act = b.dataset.act;
-  if (act === 'del') { S.tasks.splice(i, 1); save(); render(); toast('Task deleted', '', () => { S.tasks.splice(i, 0, t); save(); render(); }); }
-  if (act === 'again') {
-    ensureDefaults(TODAY);
-    S.tasks.push({ ...t, id: uid(), date: TODAY, ctx: T.sprintFor(TODAY), def: false, defId: undefined });
-    save(); openDays.add(TODAY); $('month').value = TODAY.slice(0, 7); render(); toast('Copied to today', 'ok');
-  }
-  if (act === 'up' || act === 'down') {       // swap with the neighbour of the same day
-    const dir = act === 'up' ? -1 : 1; let j = i + dir;
-    while (S.tasks[j] && S.tasks[j].date !== t.date) j += dir;
-    if (!S.tasks[j]) return;
-    [S.tasks[i], S.tasks[j]] = [S.tasks[j], S.tasks[i]]; save(); render();
-  }
+  const b = e.target.closest('[data-act="del"]'); if (!b) return;
+  const i = S.tasks.findIndex(x => x.id === b.closest('.trow').dataset.id), t = S.tasks[i];
+  S.tasks.splice(i, 1); save(); render();
+  toast('Task deleted', '', () => { S.tasks.splice(i, 0, t); save(); render(); });
 });
 function setMark(d, v) {
   S.mat = S.mat.filter(x => x !== d);
@@ -327,7 +353,7 @@ days.addEventListener('pointerdown', e => {
 });
 days.addEventListener('pointermove', e => {
   if (!drag) return;
-  if (e.clientY < 90) window.scrollBy(0, -14); else if (e.clientY > innerHeight - 150) window.scrollBy(0, 14);   // edge auto-scroll
+  if (e.clientY < 90) window.scrollBy(0, -14); else if (e.clientY > innerHeight - 120) window.scrollBy(0, 14);   // edge auto-scroll
   const el = document.elementFromPoint(e.clientX, e.clientY), r = el && el.closest('.trow');
   if (!r || r === drag || r.closest('.day') !== drag.closest('.day')) return;
   const after = e.clientY > r.getBoundingClientRect().top + r.offsetHeight / 2;
@@ -344,43 +370,67 @@ function endDrag() {
 }
 days.addEventListener('pointerup', endDrag); days.addEventListener('pointercancel', endDrag);
 
-// ---------- daily defaults (configurable) ----------
+// ---------- daily defaults ----------
 function syncToday(d) {         // keep today's list in step when a default is added / toggled
   const mine = S.tasks.find(t => t.date === TODAY && t.defId === d.id);
-  const eligible = S.mat.includes(TODAY) && isWorkday(TODAY) && d.on !== false;
+  const eligible = S.mat.includes(TODAY) && isWorkday(TODAY) && d.on;
   if (eligible && !mine) S.tasks.push(defTask(d, TODAY));
   if (!eligible && mine) S.tasks = S.tasks.filter(t => t !== mine);
+  if (eligible && mine) mine.chat = !!d.chat;
 }
 function renderDefs() {
   $('defs').innerHTML = S.defaults.map(d => `<div class="drow" data-id="${d.id}">
-    <div><b>${esc(d.desc)}</b><br><small class="m">${d.sub ? esc(d.sub) + ' · ' : ''}${d.hrs} h</small></div>
-    <button class="ico del" type="button" style="background:transparent;color:var(--danger)" title="Delete">✕</button>
-    <div class="opts">
-      <label class="chk"><input type="checkbox" data-k="on" ${d.on !== false ? 'checked' : ''}> Add every weekday</label>
-      <label class="chk"><input type="checkbox" data-k="chat" ${d.chat ? 'checked' : ''}> Send to Chat</label>
-    </div></div>`).join('') || '<small class="m">None yet.</small>';
+    <textarea data-k="desc" rows="1" aria-label="Description">${esc(d.desc)}</textarea>
+    <input data-k="sub" value="${esc(d.sub)}" placeholder="Sub" aria-label="Sub task">
+    <input data-k="hrs" type="number" inputmode="decimal" step="0.25" min="0" value="${d.hrs}" aria-label="Hours">
+    <label class="tg" title="Add every weekday"><input type="checkbox" data-k="on" ${d.on ? 'checked' : ''}><span>🔁</span></label>
+    <label class="tg" title="Send to Chat"><input type="checkbox" data-k="chat" ${d.chat ? 'checked' : ''}><span>💬</span></label>
+    <button class="x" type="button" data-act="del" title="Delete">✕</button>
+  </div>`).join('') || '<small class="m">None yet.</small>';
+  document.querySelectorAll('#defs textarea').forEach(autosize);
 }
+$('defs').addEventListener('input', e => {
+  const k = e.target.dataset.k, row = e.target.closest('.drow'); if (!k || e.target.type === 'checkbox' || !row) return;
+  const d = S.defaults.find(x => x.id === row.dataset.id);
+  d[k] = k === 'hrs' ? (parseFloat(e.target.value) || 0) : e.target.value;
+  if (k === 'desc') autosize(e.target);
+  save();
+});
 $('defs').addEventListener('change', e => {
-  const k = e.target.dataset.k, row = e.target.closest('.drow'); if (!k || !row) return;
+  const k = e.target.dataset.k, row = e.target.closest('.drow'); if (!k || e.target.type !== 'checkbox' || !row) return;
   const d = S.defaults.find(x => x.id === row.dataset.id); d[k] = e.target.checked;
   syncToday(d); save(); render();
 });
 $('defs').addEventListener('click', e => {
-  const row = e.target.closest('.drow'); if (!row || !e.target.closest('button')) return;
-  S.defaults = S.defaults.filter(d => d.id !== row.dataset.id);
-  S.tasks = S.tasks.filter(t => !(t.date === TODAY && t.defId === row.dataset.id));
+  const b = e.target.closest('[data-act="del"]'); if (!b) return;
+  const id = b.closest('.drow').dataset.id;
+  S.defaults = S.defaults.filter(d => d.id !== id);
+  S.tasks = S.tasks.filter(t => !(t.date === TODAY && t.defId === id));
   save(); render();
 });
-$('dAdd').onclick = () => {
-  const desc = $('dDesc').value.trim(); if (!desc) return toast('Enter a description', 'err');
-  const d = { id: uid(), desc, sub: $('dSub').value.trim(), hrs: parseFloat($('dHrs').value) || 0, on: true, chat: $('dChat').checked };
+$('dForm').onsubmit = e => {
+  e.preventDefault();
+  const desc = $('dDesc').value.trim(); if (!desc) return;
+  const d = { id: uid(), desc, sub: $('dSub').value.trim(), hrs: parseFloat($('dHrs').value) || 0, on: $('dOn').checked, chat: $('dChat').checked };
   S.defaults.push(d); syncToday(d); save();
-  $('dDesc').value = ''; $('dSub').value = ''; $('dChat').checked = false; render(); toast('Default added', 'ok');
+  $('dDesc').value = ''; $('dSub').value = ''; $('dOn').checked = true; $('dChat').checked = true;
+  render(); toast('Default added', 'ok');
+};
+
+// ---------- clear actions ----------
+$('clrAll').onclick = () => {
+  if (!confirm('Delete ALL task entries and day marks? Daily defaults are kept. This cannot be undone.')) return;
+  S.tasks = []; S.days = {}; S.mat = []; S.lastSent = '';
+  ensureDefaults(TODAY); save(); openDays.clear(); openDays.add(TODAY); showAll = false; render(); toast('All entries cleared', 'ok');
+};
+$('clrDef').onclick = () => {
+  if (!confirm('Delete ALL daily defaults? Your existing entries are kept (only the default rows for today are removed).')) return;
+  S.defaults = []; S.tasks = S.tasks.filter(t => !(t.date === TODAY && t.def)); save(); render(); toast('Defaults cleared', 'ok');
 };
 
 // ---------- send to Chat (descriptions only) ----------
 $('send').onclick = async () => {
-  if (!setupOk()) { $('setBox').open = true; return toast('Complete Settings first', 'err'); }
+  if (!setupOk()) { showSettings(); return toast('Complete Settings first', 'err'); }
   const list = S.tasks.filter(t => t.date === TODAY && t.desc.trim() && sentFlag(t));
   if (!list.length) return toast('No tasks to send for today', 'err');
   if (S.lastSent === TODAY && !confirm('Today was already sent. Send again?')) return;
@@ -397,15 +447,14 @@ $('send').onclick = async () => {
 // ---------- Excel download ----------
 $('dl').onclick = async () => {
   if (!window.ExcelJS) return toast('Excel library not loaded (offline?)', 'err');
-  if (!setupOk()) { $('setBox').open = true; return toast('Complete Settings first', 'err'); }
   const ym = $('month').value || TODAY.slice(0, 7);
   const ordered = S.tasks.map((t, i) => [t, i]).sort((a, b) => a[0].date.localeCompare(b[0].date) || a[1] - b[1]).map(x => x[0]);
-  const wb = T.buildWorkbook(ExcelJS, { tasks: ordered, days: S.days, name: S.name, empId: S.empId, ym });
+  const wb = T.buildWorkbook(ExcelJS, { tasks: ordered, days: S.days, ym });
   const buf = await wb.xlsx.writeBuffer(), [y, m] = ym.split('-'), a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-  a.download = `Timesheet_${S.name.replace(/\s+/g, '_')}_${T.MON[+m - 1]}-${y}.xlsx`;
+  a.download = `Timesheet_${(S.name || 'me').replace(/\s+/g, '_')}_${T.MON[+m - 1]}-${y}.xlsx`;
   a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-  toast('Excel downloaded', 'ok');
+  toast('Timesheet downloaded', 'ok');
 };
 
 render();
