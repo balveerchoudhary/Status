@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#4472c4">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <title>Daily Status Reporter</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script src="timesheet.js"></script>
@@ -15,8 +16,10 @@
   }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   body { margin:0; background:var(--bg); color:var(--text); font:16px/1.4 system-ui,Segoe UI,Roboto,sans-serif; padding-bottom:calc(100px + env(safe-area-inset-bottom)); }
-  header { background:linear-gradient(135deg,#4472c4,#2f56a0); color:#fff; padding:14px 16px; display:flex; justify-content:space-between; align-items:center; gap:10px; }
-  header h1 { margin:0; font-size:18px; } header small { opacity:.9; }
+  header { background:linear-gradient(135deg,#4472c4,#2f56a0); color:#fff; padding:14px 16px; display:flex; flex-wrap:nowrap; justify-content:space-between; align-items:center; gap:10px; }
+  header h1 { margin:0; font-size:16px; white-space:nowrap; flex:none; display:flex; align-items:center; gap:10px; }
+  .logo { height:20px; width:auto; display:block; } header small { opacity:.9; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  @media (max-width:480px) { .yr, .sprintb { display:none; } }
   main { max-width:760px; margin:0 auto; padding:12px; display:grid; gap:12px; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px; }
   label { display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:3px; }
@@ -51,12 +54,12 @@
   .day { background:var(--card); border:1px solid var(--line); border-radius:14px; overflow:hidden; }
   .day.today { border-color:var(--primary); box-shadow:0 0 0 2px rgba(68,114,196,.2); }
   .day.off, .day.wk { background:var(--green); } .day.leave { background:var(--yellow); }
-  .dayhead { display:flex; flex-wrap:wrap; gap:4px 8px; align-items:center; padding:10px 12px; background:var(--soft); cursor:pointer; user-select:none; }
-  .dayhead b { font-size:15px; } .caret { color:var(--muted); width:14px; }
-  .badge { font-size:11px; padding:2px 8px; border-radius:99px; background:var(--card); color:var(--muted); border:1px solid var(--line); }
+  .dayhead { display:flex; flex-wrap:nowrap; gap:8px; align-items:center; padding:10px 12px; overflow:hidden; background:var(--soft); cursor:pointer; user-select:none; }
+  .dayhead b { font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; flex:0 1 auto; } .caret { color:var(--muted); width:14px; flex:none; }
+  .badge { flex:none; white-space:nowrap; font-size:11px; padding:2px 8px; border-radius:99px; background:var(--card); color:var(--muted); border:1px solid var(--line); }
   .badge.now { background:var(--primary); color:#fff; border-color:transparent; }
-  .hrs { margin-left:auto; font-weight:700; }
-  .dayhead select { width:auto; min-height:34px; padding:2px 6px; font-size:13px; }
+  .hrs { margin-left:auto; font-weight:700; white-space:nowrap; flex:none; }
+  .dayhead select { flex:none; width:auto; max-width:92px; min-height:34px; padding:2px 6px; font-size:13px; }
   .empty { padding:16px; color:var(--muted); text-align:center; }
 
   /* one-line task row: grip | description | sub | hours | x */
@@ -64,7 +67,7 @@
   .trow.nochat { border-left-color:var(--amber); }
   .trow.moving { background:var(--soft); box-shadow:0 6px 18px rgba(0,0,0,.3); position:relative; z-index:2; }
   .grip { flex:0 0 28px; height:42px; display:flex; align-items:center; justify-content:center; font-size:20px; color:var(--muted); cursor:grab; touch-action:none; user-select:none; }
-  .trow textarea { flex:1; min-width:0; min-height:42px; font-size:15px; padding:9px 8px; }
+  .trow [data-f=desc] { flex:1; min-width:0; min-height:42px; font-size:15px; padding:9px 8px; text-overflow:ellipsis; }
   .trow [data-f=sub] { flex:0 0 72px; font-size:14px; padding:8px 6px; }
   .trow [data-f=hrs] { flex:0 0 52px; text-align:center; padding:8px 2px; font-size:15px; }
   .x { flex:0 0 32px; min-height:42px; padding:0; background:transparent; color:var(--danger); font-size:16px; }
@@ -75,8 +78,8 @@
   .dhead, .drow { display:flex; gap:4px; align-items:center; }
   .dhead { font-size:11px; color:var(--muted); padding:0 0 4px; }
   .drow { padding:5px 0; border-top:1px solid var(--line); align-items:flex-start; }
-  .dhead span:nth-child(1), .drow textarea { flex:1; min-width:0; }
-  .drow textarea { min-height:42px; font-size:15px; padding:9px 8px; }
+  .dhead span:nth-child(1), .drow [data-k=desc] { flex:1; min-width:0; }
+  .drow [data-k=desc] { min-height:42px; font-size:15px; padding:9px 8px; text-overflow:ellipsis; }
   .drow [data-k=sub], .dhead .c2 { flex:0 0 64px; font-size:14px; padding:8px 6px; }
   .drow [data-k=hrs], .dhead .c3 { flex:0 0 48px; text-align:center; padding:8px 2px; font-size:15px; }
   .dhead .c4, .dhead .c5 { flex:0 0 36px; text-align:center; } .dhead .c6 { flex:0 0 32px; }
@@ -122,7 +125,7 @@
   <rect x="7" y="7" width="10" height="2.2" rx="1.1" fill="#fff"/><rect x="7" y="11" width="6.5" height="2.2" rx="1.1" fill="#fff"/>
 </symbol></svg>
 <header>
-  <h1>📋 Daily Status</h1>
+  <h1><img class="logo" src="logo.png" alt="Continuous"><span>Daily Status</span></h1>
   <small id="who"></small>
 </header>
 
@@ -306,7 +309,6 @@ function render() {
   $('days').innerHTML = shown.length ? shown.map(dayHtml).join('') : '<div class="card empty">No tasks this month.</div>';
   $('older').hidden = showAll || dates.length <= LIMIT;
   $('older').textContent = `Show ${dates.length - LIMIT} older day(s)`;
-  document.querySelectorAll('#days textarea').forEach(autosize);
   refreshForm(); renderDefs(); updateTotals();
 }
 $('month').onchange = () => { showAll = false; render(); };
@@ -317,9 +319,8 @@ function dayHtml(d) {
   const w = T.dow(d), open = openDays.has(d), sel = v => (mark === v ? ' selected' : '');
   return `<section class="day ${d === TODAY ? 'today' : ''} ${mark || (w === 0 || w === 6 ? 'wk' : '')}" data-date="${d}">
     <div class="dayhead"><span class="caret">${open ? '▾' : '▸'}</span>
-      <b>${T.DAYN[w]} ${T.fmtDate(d)}</b>
-      ${d === TODAY ? '<span class="badge now">Today</span>' : ''}<span class="badge">${T.sprintFor(d)}</span>
-      ${open ? '' : `<span class="badge">${list.length} task${list.length === 1 ? '' : 's'}</span>`}
+      <b>${T.DAYN[w]} ${d.slice(8)}-${T.MON[+d.slice(5, 7) - 1]}<span class="yr">-${d.slice(0, 4)}</span></b>
+      ${d === TODAY ? '<span class="badge now">Today</span>' : ''}<span class="badge sprintb">${T.sprintFor(d)}</span>
       <span class="hrs" data-total="${d}"></span>
       <select class="mark" aria-label="Day status"><option value="">Working</option><option value="leave"${sel('leave')}>Leave</option><option value="off"${sel('off')}>Off / Holiday</option></select>
     </div>
@@ -330,14 +331,17 @@ function dayHtml(d) {
 function rowHtml(t) {
   return `<div class="trow ${sentFlag(t) ? '' : 'nochat'}" data-id="${t.id}">
     <span class="grip" title="Drag to move">⠿</span>
-    <textarea data-f="desc" rows="1" aria-label="Description">${esc(t.desc)}</textarea>
+    <input data-f="desc" value="${esc(t.desc)}" placeholder="Description" aria-label="Description">
     <input data-f="sub" value="${esc(t.sub)}" placeholder="Sub" aria-label="Sub task">
     <input data-f="hrs" type="number" inputmode="decimal" step="0.25" min="0" value="${t.hrs}" aria-label="Hours">
     <button class="x" data-act="del" title="Delete">✕</button>
   </div>`;
 }
 function updateTotals() {
-  document.querySelectorAll('[data-total]').forEach(el => { el.textContent = sum(S.tasks.filter(t => t.date === el.dataset.total)) + ' h'; });
+  document.querySelectorAll('[data-total]').forEach(el => {
+    const d = el.dataset.total, list = S.tasks.filter(t => t.date === d);
+    el.textContent = (openDays.has(d) ? '' : list.length + ' · ') + sum(list) + ' h';   // collapsed days also show the task count
+  });
   const ym = $('month').value || TODAY.slice(0, 7);
   $('mtotal').textContent = sum(S.tasks.filter(t => t.date.startsWith(ym))) + ' h';
   const n = S.tasks.filter(t => t.date === TODAY && t.desc.trim() && sentFlag(t)).length;
@@ -348,7 +352,6 @@ days.addEventListener('input', e => {
   const row = e.target.closest('.trow'), f = e.target.dataset.f; if (!row || !f) return;
   const t = S.tasks.find(x => x.id === row.dataset.id); if (!t) return;
   t[f] = f === 'hrs' ? (parseFloat(e.target.value) || 0) : e.target.value;
-  if (f === 'desc') autosize(e.target);
   save(); updateTotals();
 });
 days.addEventListener('change', e => { if (e.target.classList.contains('mark')) setMark(e.target.closest('.day').dataset.date, e.target.value); });
@@ -423,20 +426,18 @@ function syncToday(d) {         // keep today's list in step when a default is a
 }
 function renderDefs() {
   $('defs').innerHTML = S.defaults.map(d => `<div class="drow" data-id="${d.id}">
-    <textarea data-k="desc" rows="1" aria-label="Description">${esc(d.desc)}</textarea>
+    <input data-k="desc" value="${esc(d.desc)}" placeholder="Description" aria-label="Description">
     <input data-k="sub" value="${esc(d.sub)}" placeholder="Sub" aria-label="Sub task">
     <input data-k="hrs" type="number" inputmode="decimal" step="0.25" min="0" value="${d.hrs}" aria-label="Hours">
     <label class="tg" title="Add every weekday"><input type="checkbox" data-k="on" ${d.on ? 'checked' : ''}><span>🔁</span></label>
     <label class="tg chat" title="Send to Chat"><input type="checkbox" data-k="chat" ${d.chat ? 'checked' : ''}><span><svg class="gi"><use href="#gchat"/></svg></span></label>
     <button class="x" type="button" data-act="del" title="Delete">✕</button>
   </div>`).join('') || '<small class="m">None yet.</small>';
-  document.querySelectorAll('#defs textarea').forEach(autosize);
 }
 $('defs').addEventListener('input', e => {
   const k = e.target.dataset.k, row = e.target.closest('.drow'); if (!k || e.target.type === 'checkbox' || !row) return;
   const d = S.defaults.find(x => x.id === row.dataset.id);
   d[k] = k === 'hrs' ? (parseFloat(e.target.value) || 0) : e.target.value;
-  if (k === 'desc') autosize(e.target);
   save();
 });
 $('defs').addEventListener('change', e => {
