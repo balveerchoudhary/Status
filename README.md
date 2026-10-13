@@ -1,3 +1,5 @@
+KT Document: https://balveerchoudhary.github.io/Status/docs/Daily%20Status%20KT.html
+
 # Daily Status
 
 A small, mobile-first web page for logging your daily work once and using it twice:
