@@ -204,10 +204,10 @@
             <line class="arrow" x1="516" y1="307" x2="608" y2="307" marker-end="url(#ah)"/>
             <text class="sub" x="562" y="297" text-anchor="middle">write file</text>
             <line class="arrow dash" x1="678" y1="340" x2="678" y2="350" marker-end="url(#ah)"/>
-            <text class="sub" x="566" y="372">upload by hand</text>
+            <text class="sub" x="566" y="372">bookmark</text>
           </svg>
         </div>
-        <figcaption>The only outbound calls are the Chat webhook and the one-time ExcelJS download. Gist.ly is reached by uploading the file by hand, with no connection to our page.</figcaption>
+        <figcaption>The page's own outbound calls are the Chat webhook and the one-time ExcelJS download. Gist.ly is reached through a bookmark that runs on the Gist.ly tab (or by uploading the file by hand), never directly from our page.</figcaption>
       </figure>
     </section>
 
@@ -225,6 +225,7 @@
           <tr><td>@ mentions</td><td>Type <code>@</code> in a description and pick a teammate. The text gets their username, for example <code>@manu.tyagi</code>. The list comes from <code>team.json</code>.</td></tr>
           <tr><td>Send to Chat</td><td>Opens a review dialog with the exact message. Edit, then send. Only today's tasks whose Chat icon is on are included. Limit 4096 characters. A warning shows if today was already sent.</td></tr>
           <tr><td>Timesheet</td><td>Month in the picker, flat five-column sheet, plus a <em>Mentions</em> sheet when names were mentioned. On Chrome or Edge on a computer it rewrites the same file each time.</td></tr>
+          <tr><td>Gist.ly import</td><td>A bookmark on the Gist.ly tab asks the page for the entries not yet imported, uploads them with your group, and the page marks them imported (green edge). Your group is found automatically from your Gist.ly login. Desktop only.</td></tr>
           <tr><td>Auto sprint</td><td>Sprint name comes from the date. Settings holds the prefix, today's number and the weekday the number goes up.</td></tr>
           <tr><td>Theme</td><td>Light/dark switch in the header; follows the device setting until you choose.</td></tr>
           <tr><td>Clear actions</td><td>In Settings: clear all entries (keeps defaults) and clear defaults. Both need a second tap, ignore a double tap, and offer Undo.</td></tr>
@@ -260,7 +261,8 @@
       <pre><code>{ id, date: "2026-10-13", ctx: "Sprint-154", sub: "AVID-50", desc: "...", hrs: 2,
   chat: true,            // false = stays in the Timesheet, never goes to Chat
   def: true, defId,      // only on tasks created from a daily default
-  leave: true }          // only on the Leave entry</code></pre>
+  leave: true,          // only on the Leave entry
+  imported: true }       // set once the entry was sent to Gist.ly</code></pre>
     </section>
 
     <section id="flows">
@@ -289,6 +291,15 @@
         <li>On Chrome or Edge on a computer the first download asks where to save and remembers the file. After that the same file is overwritten, then read back and checked for size, and the message shows entries, size and time. If that is not possible, a normal download happens.</li>
       </ol>
 
+      <h3>Gist.ly import (bookmark)</h3>
+      <p>Gist.ly's API answers browsers only from its own site and needs the login cookie on that site, so the upload runs inside the Gist.ly tab. Our page prepares the file.</p>
+      <ol class="steps">
+        <li>One time: drag the <strong>Import Daily Status</strong> button to the bookmarks bar.</li>
+        <li>Tap <strong>🔗 Gist.ly</strong>. It opens Gist.ly; sign in with Google.</li>
+        <li>On the Gist.ly tab, click the bookmark. It reads the login cookie and opens a small window on our page, then repeatedly asks it for the file with <code>postMessage</code>.</li>
+        <li>The page answers only a message from <code>https://workdiary.org40now.com</code>, builds a file from entries not yet imported (dates up to today, no future dates) and sends it back to that origin only.</li>
+        <li>The bookmark asks Gist.ly for your own groups (<code>get_member_groups.json</code>) and uses the one you belong to, or your primary one. It asks you only if you belong to several and none is primary. It then POSTs the file with <code>file</code> and <code>group_id</code>, reads the result (created, drafted, rejected) and, if nothing was rejected, tells the page to mark those entries imported. Afterwards it reloads the Gist.ly tab so the new entries show.</li>
+      </ol>
       <h3>Sprint number</h3>
       <p>The number goes up by one every week on a chosen weekday. Settings holds one known point: <em>the number that applies on the anchor date</em>.</p>
       <pre><code>weekStart = last chosen weekday on or before the anchor date
@@ -310,10 +321,11 @@ check     : Tue 13-Oct-2026 → Sprint-154;  Mon 12-Oct-2026 → Sprint-153</cod
       <div class="tablewrap"><table>
         <thead><tr><th>File</th><th>What is in it</th></tr></thead>
         <tbody>
-          <tr><td><code>index.html</code></td><td>The whole app. CSS first, then markup, then one script. Script sections, in order: state and storage, toast, theme switch, settings, sprint settings, @ mentions, add task, history rendering, drag to move, daily defaults, clear actions, Chat review and send, Excel download.</td></tr>
+          <tr><td><code>index.html</code></td><td>The whole app. CSS first, then markup, then one script. Script sections, in order: state and storage, toast, theme switch, settings, sprint settings, @ mentions, add task, history rendering, drag to move, daily defaults, clear actions, Gist.ly import bridge and bookmark, Chat review and send, Excel download.</td></tr>
           <tr><td><code>timesheet.js</code></td><td>Pure logic, also usable from Node: date helpers, sprint calculation, mention conversion, <code>buildWorkbook()</code>. No access to the page, so it can be tested alone.</td></tr>
           <tr><td><code>team.json</code></td><td>People for the @ picker: id, name, email, uuid.</td></tr>
           <tr><td><code>tools/add-person.js</code></td><td>Command-line helper that adds people to <code>team.json</code> from Workdiary.</td></tr>
+          <tr><td><code>tools/import-timesheet.js</code></td><td>Command-line upload of a Timesheet file to Gist.ly. The group is found automatically, or pass <code>--group</code>.</td></tr>
           <tr><td><code>favicon.svg</code></td><td>Tab icon.</td></tr>
           <tr><td><code>README.md</code></td><td>Team-facing explanation and the demo script.</td></tr>
         </tbody>
@@ -373,6 +385,7 @@ WD_TOKEN=&lt;token&gt; node tools/add-person.js new.person         # write team.
       <ul>
         <li>Keep the repository private. If it is ever shared more widely, remove <code>DEFAULT_HOOK</code> and have each person paste the URL in Settings. If the URL may have leaked, delete and re-create the webhook.</li>
         <li>The Workdiary token used by <code>add-person.js</code> is a session credential. Read it from the environment only, never put it in a file, a commit or a chat. It expires with the session.</li>
+        <li>The Gist.ly bookmark reads the Gist.ly login cookie on the Gist.ly tab and uses it only for two Gist.ly API calls. Our page never sees it, and answers messages only from <code>https://workdiary.org40now.com</code>.</li>
         <li>The page sends data only to the Chat webhook. It loads ExcelJS from cdnjs; pin and review the version when updating.</li>
         <li>Data stays in the browser. A shared computer shares the data.</li>
       </ul>
@@ -385,7 +398,7 @@ WD_TOKEN=&lt;token&gt; node tools/add-person.js new.person         # write team.
         <li><strong>Chat delivery cannot be confirmed</strong> by the page (the no-cors trade-off). Chat also limits a space to about one message per second; the page sends one per press.</li>
         <li><strong>Updating the same Timesheet file</strong> works only in Chrome and Edge on a computer. Elsewhere each download is a new file, and the browser may add "(1)".</li>
         <li><strong>The file is rebuilt from the page's history</strong> each time. Changes made by hand in Excel are replaced. Excel does not reload a file changed behind its back, so close and reopen it to see the update.</li>
-        <li><strong>Gist.ly import is manual.</strong> Upload the file on Gist.ly's page and pick a Group first, otherwise the rows are saved as drafts.</li>
+        <li><strong>Gist.ly import</strong> needs a desktop browser, pop-ups allowed for Gist.ly, and a signed-in Gist.ly tab. If the group cannot be found, Gist.ly saves the rows as drafts. It relies on Gist.ly's login cookie (<code>access_token</code>) and import API, so it needs updating if they change. On a phone, download the Timesheet and upload it by hand.</li>
         <li>A single task is capped at 8.5 hours, and the page warns above 4 hours.</li>
         <li>There are no automated tests in the repository.</li>
       </ul>
@@ -403,7 +416,9 @@ WD_TOKEN=&lt;token&gt; node tools/add-person.js new.person         # write team.
           <tr><td>Chat message does not arrive</td><td>Webhook deleted or wrong, space removed, or too many messages at once</td><td>Check in the space. Re-create the webhook and update Settings.</td></tr>
           <tr><td>Send to Chat shows (0)</td><td>No task today with the Chat icon on. The seeded Daily Scrum is off.</td><td>Add a task, or turn the Chat icon on for a default.</td></tr>
           <tr><td>Wrong sprint number</td><td>Settings anchor is off</td><td>Set the current number and change day, Apply.</td></tr>
-          <tr><td>Gist.ly shows drafts</td><td>No Group chosen on its upload page</td><td>Choose the Group and upload again.</td></tr>
+          <tr><td>Gist.ly shows drafts</td><td>The group could not be found, or a manual upload had none</td><td>Run the bookmark again (its result names the group it used). For a manual upload, choose the Group on Gist.ly's page.</td></tr>
+          <tr><td>Bookmark says to sign in or open Gist.ly</td><td>Not on the Gist.ly tab, or not signed in</td><td>Open Gist.ly, sign in with Google, click the bookmark again.</td></tr>
+          <tr><td>Bookmark says the pop-up was blocked</td><td>Browser blocks the small bridge window</td><td>Allow pop-ups for Gist.ly and click again.</td></tr>
           <tr><td>Buttons do nothing</td><td>A script error stopped the page</td><td>Open DevTools → Console and read the first error.</td></tr>
         </tbody>
       </table></div>
@@ -423,8 +438,8 @@ WD_TOKEN=&lt;token&gt; node tools/add-person.js new.person         # write team.
         </tbody>
       </table></div>
       <h3>Tried and removed</h3>
-      <div class="note warn"><b>Direct import into Gist.ly.</b> Not possible from a web page: Gist.ly's API answers browsers only from its own site, and the login is a cookie on its own domain. I built a bookmark-plus-pop-up bridge and a command-line uploader and tested them against a fake server, then removed both. A real fix needs Gist.ly's owners to allow our site or offer a token flow.</div>
-      <p>Also removed on request: a group picker in Settings, a Timesheet mention-format setting, and a Chat resend confirmation (replaced by the review dialog).</p>
+      <div class="note warn"><b>Direct import into Gist.ly.</b> Not possible straight from a web page: Gist.ly's API answers browsers only from its own site, and the login is a cookie on its own domain. Solved with a bookmark that runs on the Gist.ly tab and a small bridge window on our page, plus a command-line uploader. It was removed once and then restored. A cleaner fix would need Gist.ly's owners to allow our site or offer a token flow.</div>
+      <p>Removed on request: the group question (the group is now found automatically from your Gist.ly login), a Timesheet mention-format setting, and a Chat resend confirmation (replaced by the review dialog).</p>
     </section>
 
     <section id="next">
@@ -433,7 +448,7 @@ WD_TOKEN=&lt;token&gt; node tools/add-person.js new.person         # write team.
         <li>Remove <code>DEFAULT_HOOK</code> from the code so the secret is not in the source.</li>
         <li>Add a backup and restore of the saved data as a file, to survive cleared browsers and move between devices.</li>
         <li>Add automated tests. <code>timesheet.js</code> is already testable; the UI needs a browser test.</li>
-        <li>Ask the Gist.ly owners for an API that accepts our site, to bring back one-click import.</li>
+        <li>Ask the Gist.ly owners for an API that accepts our site, to replace the bookmark with a one-click import.</li>
         <li>Split <code>index.html</code> into modules if it keeps growing.</li>
       </ul>
     </section>

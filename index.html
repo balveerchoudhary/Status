@@ -91,7 +91,7 @@
   details[open] summary { margin-bottom:8px; }
 
   .dock { position:fixed; left:0; right:0; bottom:0; display:flex; gap:8px; padding:10px 12px calc(10px + env(safe-area-inset-bottom)); background:var(--card); border-top:1px solid var(--line); z-index:5; max-width:760px; margin:0 auto; }
-  .dock button { min-height:50px; } #dl { flex:0 0 auto; padding:0 14px; } #send { flex:1; font-size:16px; }
+  .dock button { min-height:50px; } #dl, #gl { flex:0 0 auto; padding:0 12px; font-size:14px; } #send { flex:1; font-size:16px; }
   #toast { position:fixed; left:50%; bottom:calc(84px + env(safe-area-inset-bottom)); transform:translate(-50%,20px); background:#111827; color:#fff; padding:10px 14px; border-radius:12px; display:flex; gap:12px; align-items:center; opacity:0; pointer-events:none; transition:.2s; z-index:9; max-width:92vw; font-size:14px; }
   #toast.show { opacity:1; transform:translate(-50%,0); pointer-events:auto; }
   #toast.ok { background:#166534; } #toast.err { background:#b91c1c; }
@@ -139,6 +139,10 @@
   .hwarn { background:var(--yellow); color:var(--text); border-radius:8px; padding:6px 10px; font-size:13px; }
   .hwarn[hidden] { display:none; }
   .trow [data-f=hrs].warn, .drow [data-k=hrs].warn { background:var(--yellow); border-color:var(--amber); }
+  .bm { display:inline-block; padding:8px 14px; background:var(--primary); color:#fff; border-radius:10px; font-weight:600; text-decoration:none; cursor:grab; }
+  .trow.imported:not(.nochat) { border-left-color:#22c55e; }
+  #bridge { position:fixed; inset:0; z-index:80; background:var(--bg); display:grid; place-items:center; text-align:center; padding:24px; }
+  #bridge[hidden] { display:none; }
   .armed { background:var(--danger) !important; color:#fff !important; }
 </style>
 </head>
@@ -229,6 +233,19 @@
       <button id="addLeave" type="button" style="width:100%;margin-top:8px">＋ Add leave</button>
     </div>
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
+      <label>🔗 Gist.ly import (no extension needed)</label>
+      <ol style="margin:4px 0 8px;padding-left:18px;font-size:13px;line-height:1.55;color:var(--muted)">
+        <li>Drag this button to your bookmarks bar: <a id="bm" class="bm" href="#">Import Daily Status</a></li>
+        <li>Tap <b>🔗 Gist.ly</b> at the bottom. It opens Gist.ly. Sign in with Google if asked.</li>
+        <li>On the Gist.ly tab, click the <b>Import Daily Status</b> bookmark. A small window sends your new entries and closes, and Gist.ly refreshes by itself.</li>
+      </ol>
+      <small class="m" style="display:block">Each entry is sent once and gets a green edge. Edits made after importing are not sent again. Your group is found automatically from your Gist.ly login. The bookmark opens the published site (balveerchoudhary.github.io/Status), so it sends the entries saved there.</small>
+      <div class="grid2" style="margin-top:8px">
+        <button id="bmCopy" type="button" class="ghost">Copy script instead</button>
+        <button id="impForget" type="button" class="ghost" style="color:var(--danger)">Forget import marks</button>
+      </div>
+    </div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
       <label>📄 Timesheet file</label>
       <small class="m" style="display:block;margin-bottom:6px">In Chrome or Edge on a computer, ⬇ Timesheet updates the same file each time. Use this to choose a different file or folder.</small>
       <button id="fhForget" type="button" class="ghost" style="width:100%">Forget saved file locations</button>
@@ -250,9 +267,11 @@
     <div class="rv-actions"><button id="rvCancel" class="ghost" type="button">Cancel</button><button id="rvSend" type="button">Send to Chat</button></div>
   </div>
 </div>
+<div id="bridge" hidden><div><div style="font-size:40px">🔗</div><b>Gist.ly import</b><p id="bridgeMsg" style="color:var(--muted)">Waiting for Gist.ly… keep this window open.</p></div></div>
 <div id="toast"><span id="tmsg"></span><button id="tact" hidden>Undo</button></div>
 <div class="dock">
   <button id="dl" class="ghost">⬇ Timesheet</button>
+  <button id="gl" class="ghost" title="Open Gist.ly, then click the Import bookmark">🔗 Gist.ly</button>
   <button id="send"><svg class="gi"><use href="#gchat"/></svg> Send today to Chat</button>
 </div>
 
@@ -470,7 +489,7 @@ function dayHtml(d) {
   </section>`;
 }
 function rowHtml(t) {
-  return `<div class="trow ${sentFlag(t) ? '' : 'nochat'}" data-id="${t.id}">
+  return `<div class="trow ${sentFlag(t) ? '' : 'nochat'} ${t.imported ? 'imported' : ''}" data-id="${t.id}">
     <span class="grip" title="Drag to move">⠿</span>
     <input data-f="desc" data-mention value="${esc(t.desc)}" placeholder="Description" aria-label="Description">
     <input data-f="sub" value="${esc(t.sub)}" placeholder="Sub" aria-label="Sub task">
@@ -487,6 +506,8 @@ function updateTotals() {
   $('mtotal').textContent = sum(S.tasks.filter(t => t.date.startsWith(ym))) + ' h';
   const n = S.tasks.filter(t => t.date === TODAY && t.desc.trim() && sentFlag(t)).length;
   $('send').innerHTML = `<svg class="gi"><use href="#gchat"/></svg> Send to Chat (${n})`;
+  const pend = S.tasks.filter(t => t.date <= TODAY && !t.imported && t.desc.trim()).length;
+  $('gl').textContent = '🔗 Gist.ly' + (pend ? ' (' + pend + ')' : '');
 }
 const days = $('days');
 days.addEventListener('input', e => {
@@ -624,6 +645,113 @@ arm($('clrDef'), () => {
   const undo = snapshotUndo(), n = S.defaults.length;
   S.defaults = []; S.tasks = S.tasks.filter(t => !(t.date === TODAY && t.def)); save(); render(); toast(n + ' defaults cleared (entries kept)', 'ok', undo);
 });
+
+// ---------- Gist.ly import without an extension (a bookmark on the Gist.ly tab + a small bridge window) ----------
+// The Gist.ly API only answers requests from https://workdiary.org40now.com and needs the login cookie on that site,
+// so the upload has to run inside the Gist.ly page. The bookmark does that; this page only prepares the file and
+// talks to the Gist.ly origin (and no other) through postMessage.
+const GISTLY_ORIGIN = 'https://workdiary.org40now.com';
+const pendingImport = () => S.tasks.filter(t => t.date <= TODAY && !t.imported && t.desc.trim());
+const IS_BRIDGE = new URLSearchParams(location.search).get('bridge') === '1';
+if (IS_BRIDGE) $('bridge').hidden = false;
+let bridgeBusy = false;
+window.addEventListener('message', async e => {
+  if (e.origin !== GISTLY_ORIGIN || !e.data || typeof e.data.type !== 'string') return;
+  const reply = m => e.source.postMessage(m, GISTLY_ORIGIN);
+  if (e.data.type === 'ds-request') {
+    if (bridgeBusy) return;
+    bridgeBusy = true;
+    try {
+      if (!window.ExcelJS) return reply({ type: 'ds-error', message: 'Daily Status could not load its Excel library (offline?).' });
+      if (!setupOk()) return reply({ type: 'ds-error', message: 'Open Daily Status, go to Settings and complete your name, group and webhook first.' });
+      const list = pendingImport();
+      if (!list.length) return reply({ type: 'ds-empty' });
+      const order = new Map(S.tasks.map((t, i) => [t.id, i]));
+      const ordered = list.slice().sort((a, b) => a.date.localeCompare(b.date) || order.get(a.id) - order.get(b.id));
+      const wb = T.buildWorkbook(ExcelJS, { tasks: ordered, days: {}, all: true, ym: TODAY.slice(0, 7), people: PEOPLE, mentionMode: 'user' });
+      const buffer = await wb.xlsx.writeBuffer();
+      $('bridgeMsg').textContent = 'Sending ' + ordered.length + ' entries to Gist.ly…';
+      reply({ type: 'ds-file', name: 'Timesheet_' + S.name.replace(/\s+/g, '_') + '_' + TODAY + '.xlsx', ids: ordered.map(t => t.id), count: ordered.length, buffer });
+    } finally { bridgeBusy = false; }
+  }
+  if (e.data.type === 'ds-done' && Array.isArray(e.data.ids)) {
+    const ids = new Set(e.data.ids);
+    S.tasks.forEach(t => { if (ids.has(t.id)) t.imported = true; });
+    save(); render();
+    toast(ids.size + ' entries imported into Gist.ly', 'ok');
+    if (IS_BRIDGE) { $('bridgeMsg').textContent = 'Done ✓  ' + ids.size + ' entries sent. This window closes by itself.'; setTimeout(() => window.close(), 1500); }
+  }
+});
+
+// Runs on the Gist.ly tab. It must stay self-contained: it is turned into a bookmark with Function.toString().
+function gistlyRunner(cfg) {
+  var GO = 'https://workdiary.org40now.com', API = 'https://workdiary-services.org40now.com';
+  var XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  if (location.origin !== GO) { alert('Open Gist.ly (' + GO + ') in this tab, sign in with Google, then click this bookmark again.'); return; }
+  var m = document.cookie.match(/(?:^|;\s*)access_token=([^;]*)/);
+  if (!m) { alert('Please sign in to Gist.ly first, then click this bookmark again.'); return; }
+  var token = decodeURIComponent(m[1]), t0 = Date.now() - 60000;
+  var w = window.open(cfg.app + '?bridge=1', 'ds_bridge', 'width=440,height=420');
+  if (!w) { alert('The pop-up was blocked. Allow pop-ups for Gist.ly and click the bookmark again.'); return; }
+  var started = false, uploaded = false, tries = 0, hdr = { accept: 'application/json', authorization: token };
+  var iv = setInterval(function () {
+    if (started) { clearInterval(iv); return; }
+    if (++tries > 40) { clearInterval(iv); alert('Could not reach Daily Status at ' + cfg.app + '. Check the address and the pop-up settings.'); return; }
+    try { w.postMessage({ type: 'ds-request' }, cfg.origin); } catch (e) {}
+  }, 600);
+  window.addEventListener('message', async function onMsg(e) {
+    var d = e.data;
+    if (e.origin !== cfg.origin || !d || typeof d.type !== 'string' || d.type.indexOf('ds-') !== 0 || started) return;
+    if (d.type === 'ds-error') { started = true; alert(d.message); w.close(); return; }
+    if (d.type === 'ds-empty') { started = true; alert('Nothing new to import. Everything is already in Gist.ly.'); w.close(); return; }
+    if (d.type !== 'ds-file') return;
+    started = true;
+    try {
+      var fd = new FormData();
+      fd.append('file', new Blob([d.buffer], { type: XLSX }), d.name);
+      // Your group comes from your own Gist.ly login: the one you belong to, or your primary one. Only if you belong to
+      // several and none is primary does it ask which to use.
+      var gid = d.groupId, gname = '';
+      try {
+        var gs = (await (await fetch(API + '/external_apis/get_member_groups.json', { headers: hdr })).json()).groups || [];
+        var pick = gs.filter(function (g) { return g.primary; })[0] || (gs.length === 1 ? gs[0] : null);
+        if (!pick && gs.length > 1) {
+          var ans = prompt('Which group are these entries for?\n' + gs.map(function (g, i) { return (i + 1) + '. ' + g.display_name; }).join('\n'), '1');
+          pick = gs[(parseInt(ans, 10) || 1) - 1];
+        }
+        if (pick) { gid = pick.id; gname = pick.display_name; }
+      } catch (e) {}
+      if (gid) fd.append('group_id', gid);
+      var r = await fetch(API + '/entries/timesheet_import.json', { method: 'POST', headers: hdr, body: fd });
+      if (!r.ok) { alert('Gist.ly rejected the upload (HTTP ' + r.status + ').' + (r.status === 401 ? ' Sign in again and retry.' : '')); w.close(); return; }
+      uploaded = true;
+      var res = null;
+      for (var i = 0; i < 8 && !res; i++) {
+        await new Promise(function (ok) { setTimeout(ok, 1500); });
+        var list = await (await fetch(API + '/timesheet_uploads/imported_timesheets.json', { headers: hdr })).json();
+        var last = list.filter(function (x) { return x.filename === d.name && Date.parse(x.created_at) >= t0; }).pop();
+        if (last && last.status === 'Completed') res = last.status_data || {};
+      }
+      if (!res || !res.rejected) w.postMessage({ type: 'ds-done', ids: d.ids }, cfg.origin);
+      alert((gname ? 'Group: ' + gname + '\n' : '') + (res ? 'Gist.ly: ' + res.created + ' created, ' + res.drafted + ' drafted, ' + res.rejected + ' rejected.' + (res.rejected ? ' Nothing was marked as imported.' : '')
+                : 'Uploaded ' + d.count + ' entries. Check "Imported Timesheets" for the result.'));
+    } catch (err) { alert('Import failed: ' + err.message); }
+    setTimeout(function () { try { w.close(); } catch (e) {} if (uploaded) location.reload(); }, 800);   // refresh Gist.ly so the new entries show
+  });
+}
+const BRIDGE_APP = 'https://balveerchoudhary.github.io/Status/';      // the published site: where the bookmark opens the bridge window
+const runnerCode = () => '(' + gistlyRunner.toString() + ')(' + JSON.stringify({ app: BRIDGE_APP, origin: new URL(BRIDGE_APP).origin }) + ');';
+$('bm').href = 'javascript:' + encodeURIComponent(runnerCode());
+$('bm').onclick = e => { e.preventDefault(); toast('Drag this button to your bookmarks bar', ''); };
+$('bmCopy').onclick = async () => {
+  try { await navigator.clipboard.writeText(runnerCode()); toast('Script copied. Paste it into the browser console on the Gist.ly tab.', 'ok'); }
+  catch { prompt('Copy this script:', runnerCode()); }
+};
+arm($('impForget'), () => { S.tasks.forEach(t => { delete t.imported; }); save(); render(); toast('Import marks cleared', 'ok'); });
+$('gl').onclick = () => {
+  window.open(GISTLY_ORIGIN + '/', '_blank');
+  toast('Sign in with Google if asked, then click the "Import Daily Status" bookmark on that tab.', '');
+};
 
 // ---------- send to Chat: review and edit the exact message first ----------
 const CHAT_LIMIT = 4096;                       // Google Chat text message limit

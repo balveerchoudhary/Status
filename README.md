@@ -118,9 +118,37 @@ Sign in to Workdiary in the browser, open DevTools → Network, click any reques
 
 You can also add a person by hand: copy their `id`, `full_name`, `email` and `uuid` from the response into `team.json`.
 
-## Importing the Timesheet into Gist.ly
+## Importing into Gist.ly (no extension)
 
-Upload the downloaded file by hand on Gist.ly's *Upload Timesheet* page. It has the columns that page requires (`Date`, `Description`, `Hours`, `Task context`, `Task sub context`). Remember to select a Group on that page before uploading, otherwise Gist.ly saves the rows as drafts.
+The page cannot call Gist.ly itself: its API only answers requests from `https://workdiary.org40now.com`, and your login is a cookie on that site. So the upload runs **inside the Gist.ly tab**, started by a bookmark, and this page only prepares the file.
+
+The file has the columns Gist.ly's importer requires (`Date`, `Description`, `Hours`, `Task context`, `Task sub context`). Gist.ly also needs a **Group** for the rows to be saved as entries (otherwise they become **drafts**). The bookmark finds it for you, so there is nothing to set.
+
+One-time setup, in *Settings → Gist.ly import*: drag **Import Daily Status** to your bookmarks bar. (No bookmarks bar? Use **Copy script instead** and paste it into the browser console on the Gist.ly tab.)
+
+Each time:
+
+1. Tap **🔗 Gist.ly** (bottom bar). It opens Gist.ly; sign in with Google if asked. The button shows how many entries are waiting.
+2. On the Gist.ly tab, click the **Import Daily Status** bookmark.
+3. A small window opens, builds a file from the entries not yet imported (dates up to today), uploads it with your **group id** (found from your Gist.ly login), shows the result, marks those entries as imported (green edge), closes, and **reloads the Gist.ly tab** so the new entries show.
+
+Details worth knowing:
+
+- Only entries **not yet imported** are sent, so nothing is duplicated. Edits made after importing are not re-sent. *Settings → Forget import marks* resets this.
+- If Gist.ly rejects any row, nothing is marked as imported and you see the counts.
+- Safety: this page answers only messages that come from `https://workdiary.org40now.com`, sends the file only to that origin, and never sees your Gist.ly token. The bookmark reads the token on the Gist.ly page and uses it only for the two Gist.ly API calls.
+- The bookmark always opens the published site, `https://balveerchoudhary.github.io/Status/`, and sends the entries saved **in that site** (browser data is per address). A bookmark made earlier from another address must be replaced.
+- It needs pop-ups allowed for Gist.ly (the bridge window) and a desktop browser. On a phone, use the normal Timesheet download and upload it by hand.
+- If Gist.ly changes its login cookie or API, the bookmark stops working and needs updating.
+- **Your group is automatic.** The bookmark asks Gist.ly for your own groups (`GET /external_apis/get_member_groups.json`). It uses the group you belong to, or your primary group. Only if you belong to several and none is primary does it ask you to choose. The result message names the group it used.
+
+### From the command line
+
+```bash
+WD_TOKEN=<token> node tools/import-timesheet.js Timesheet_Your_Name_Oct-2026.xlsx
+```
+
+Add `--group <groupId>` to force a group; otherwise it looks yours up like the bookmark does. It sends the same request as the Upload button (`POST /entries/timesheet_import.json`, form fields `file` and `group_id`) and then prints how many entries were created, drafted and rejected. Get the token the same way as in *Adding a new person*, and never commit it.
 
 ## Sprint calculation
 
@@ -156,6 +184,7 @@ To get a webhook URL: in Google Chat open the space → **Apps & integrations** 
 | `timesheet.js` | Date helpers, sprint calculation, Excel workbook builder |
 | `team.json` | Team directory used by @mentions (id, name, email, uuid) |
 | `tools/add-person.js` | Looks people up in Workdiary and adds them to `team.json` |
+| `tools/import-timesheet.js` | Uploads a Timesheet .xlsx to Gist.ly from the command line |
 | `favicon.svg` | Browser tab icon |
 
 ## Deploy on GitHub Pages
