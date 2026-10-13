@@ -48,7 +48,7 @@ Only the **description** of each task for **today**, under the person's name and
 
 - A task is sent only if its **Google Chat icon is ON**. Tasks with it OFF show an amber edge and still go to the Timesheet. This is how private or internal items stay out of Chat.
 - Hours, sprint and sub task are **not** sent.
-- Pressing Send twice on the same day asks you to tap again, so you do not post duplicates by accident.
+- **Review before sending:** pressing **Send to Chat** opens a dialog with the exact message. Edit it if you like (edits change only this message, not your saved tasks), then **Send to Chat** (or Ctrl+Enter), or **Cancel**. If today was already sent, the dialog warns that sending again posts a duplicate. The message is limited to 4096 characters.
 
 ## Excel Timesheet
 
@@ -59,9 +59,7 @@ Only the **description** of each task for **today**, under the person's name and
 
 ## @mentions
 
-Type `@` in any description and pick a teammate (the list comes from `team.json`: id, name, email, uuid). The description keeps a readable `@Full Name`, and Chat shows exactly that.
-
-In the Timesheet, a mention is written as `@Full Name`, for example `@Manu Tyagi`. (To change the format, edit the `mentionMode` value in the Timesheet download code in `index.html`: `'name'`, `'user'` for `@manu.tyagi`, or `'html'` for Workdiary mention markup.)
+Type `@` in any description and pick a teammate (the list comes from `team.json`: id, name, email, uuid). The description gets their **username**, for example `@manu.tyagi`, which is also what Chat and the Timesheet show. Older entries typed as `@Full Name` are converted to the username automatically. (To change the Timesheet format, edit the `mentionMode` value in the Timesheet download code in `index.html`: `'user'`, `'name'` for `@Manu Tyagi`, or `'html'` for Workdiary mention markup.)
 
 When the month has mentions, the workbook gets a second sheet, **Mentions**, listing everyone mentioned with their Id, Name, Email and UUID.
 

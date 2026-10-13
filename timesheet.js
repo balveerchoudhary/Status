@@ -39,22 +39,23 @@
   const sprintFor = iso => sprintCfg.prefix + sprintNumber(iso);
   const nextSprintStart = iso => fromUtc(utc(iso) + (((sprintCfg.day - dow(iso) + 7) % 7) || 7) * DAY_MS);
 
-  // ---- @mentions: stored in descriptions as "@Full Name"; converted when exporting ----
-  const escRe = x => x.replace(/[.*+?^${}()|[]\]/g, '\$&');
+  // ---- @mentions: stored in descriptions as "@username" (e.g. @manu.tyagi); "@Full Name" is understood too ----
+  const userOf = p => p.email.split('@')[0];
+  const escRe = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const mentionRe = people => people.length
-    ? new RegExp('@(' + people.map(p => p.name).sort((a, b) => b.length - a.length).map(escRe).join('|') + ')(?![\w])', 'gi') : null;
+    ? new RegExp('@(' + people.flatMap(p => [p.name, userOf(p)]).sort((a, b) => b.length - a.length).map(escRe).join('|') + ')(?!\\w)', 'gi') : null;
   const escHtml = x => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  const findPerson = (people, name) => people.find(p => p.name.toLowerCase() === name.toLowerCase());
+  const findPerson = (people, key) => { const k = String(key).toLowerCase(); return people.find(p => p.name.toLowerCase() === k || userOf(p).toLowerCase() === k); };
   function mentionHtml(p, i) {      // same markup the Workdiary editor (Quill mention) produces
     const n = escHtml(p.name), e = escHtml(p.email);
     return '<span class="mention" data-index="' + i + '" data-denotation-char="" data-id="' + p.id + '" data-email="' + e + '" data-display_name="' + n +
       '" data-value="&lt;span title=' + e + '&gt;' + n + '&lt;/span&gt;" data-type="User">﻿<span contenteditable="false"><span class="ql-mention-denotation-char"></span><span title="' + e + '">' + n + '</span></span>﻿</span>';
   }
-  // mode: 'user' -> @manu.tyagi (no domain) | 'name' -> @Full Name | 'html' -> Workdiary mention markup
+  // mode: 'user' (default) -> @manu.tyagi | 'name' -> @Full Name | 'html' -> Workdiary mention markup
   function convertMentions(text, people, mode) {
     text = String(text);
     const re = mentionRe(people || []); if (!re) return text;
-    if (mode !== 'html') return text.replace(re, (m, n) => { const p = findPerson(people, n); return !p ? m : mode === 'name' ? '@' + p.name : '@' + p.email.split('@')[0]; });
+    if (mode !== 'html') return text.replace(re, (m, n) => { const p = findPerson(people, n); return !p ? m : mode === 'name' ? '@' + p.name : '@' + userOf(p); });
     let out = '', last = 0, i = 0, m;
     while ((m = re.exec(text))) {
       const p = findPerson(people, m[1]); if (!p) continue;

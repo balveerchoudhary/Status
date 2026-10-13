@@ -125,7 +125,18 @@
   #mpop button { display:flex; flex-direction:column; align-items:flex-start; width:100%; min-height:44px; padding:6px 12px; border-radius:0; background:transparent; color:var(--text); text-align:left; font-weight:400; }
   #mpop button.on { background:var(--soft); }
   #mpop small { color:var(--muted); font-size:12px; }
-    .armed { background:var(--danger) !important; color:#fff !important; }
+    #review { position:fixed; inset:0; z-index:70; background:rgba(0,0,0,.5); display:flex; align-items:flex-end; justify-content:center; }
+  #review[hidden] { display:none; }
+  .rv-card { background:var(--card); width:100%; max-width:560px; border-radius:16px 16px 0 0; padding:14px; display:grid; gap:10px; max-height:92vh; overflow:auto; }
+  @media (min-width:600px) { #review { align-items:center; } .rv-card { border-radius:16px; } }
+  .rv-card h3 { margin:0; font-size:17px; display:flex; align-items:center; gap:8px; }
+  #rvText { min-height:200px; max-height:50vh; overflow:auto; resize:vertical; font-size:15px; line-height:1.5; }
+  #rvWarn { background:var(--yellow); padding:8px 10px; border-radius:10px; font-size:13px; }
+  #rvWarn[hidden] { display:none; }
+  .rv-meta { display:flex; justify-content:space-between; gap:8px; font-size:12px; color:var(--muted); }
+  .rv-meta .over { color:var(--danger); font-weight:700; }
+  .rv-actions { display:flex; gap:8px; } .rv-actions button { flex:1; }
+  .armed { background:var(--danger) !important; color:#fff !important; }
 </style>
 </head>
 <body>
@@ -225,6 +236,15 @@
   </details>
 </main>
 
+<div id="review" hidden role="dialog" aria-modal="true" aria-labelledby="rvTitle">
+  <div class="rv-card">
+    <h3 id="rvTitle"><svg class="gi"><use href="#gchat"/></svg> Review message</h3>
+    <div id="rvWarn" hidden>⚠ Today was already sent. Sending again posts a duplicate message.</div>
+    <textarea id="rvText" spellcheck="true" aria-label="Message to send"></textarea>
+    <div class="rv-meta"><span id="rvCount"></span><span>Edits here change only this message, not your tasks.</span></div>
+    <div class="rv-actions"><button id="rvCancel" class="ghost" type="button">Cancel</button><button id="rvSend" type="button">Send to Chat</button></div>
+  </div>
+</div>
 <div id="toast"><span id="tmsg"></span><button id="tact" hidden>Undo</button></div>
 <div class="dock">
   <button id="dl" class="ghost">⬇ Timesheet</button>
@@ -339,7 +359,7 @@ function mRefresh(el) {
   mc = { el, start: k.start, end: k.end, items, idx: 0 }; mDraw();
 }
 function mDraw() {
-  mpop.innerHTML = mc.items.map((p, i) => '<button type="button" class="' + (i === mc.idx ? 'on' : '') + '" data-i="' + i + '"><b>' + esc(p.name) + '</b><small>' + esc(p.email) + '</small></button>').join('');
+  mpop.innerHTML = mc.items.map((p, i) => '<button type="button" class="' + (i === mc.idx ? 'on' : '') + '" data-i="' + i + '"><b>' + esc(p.name) + '</b><small>@' + esc(p.email.split('@')[0]) + '</small></button>').join('');
   const r = mc.el.getBoundingClientRect(), w = Math.min(Math.max(r.width, 260), innerWidth - 16);
   mpop.style.width = w + 'px'; mpop.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + 'px';
   if (r.bottom > innerHeight * 0.55) { mpop.style.top = 'auto'; mpop.style.bottom = (innerHeight - r.top + 4) + 'px'; }   // keep clear of the keyboard
@@ -348,8 +368,9 @@ function mDraw() {
 }
 function mPick(i) {
   const { el, start, end, items } = mc, p = items[i], v = el.value;
-  el.value = v.slice(0, start) + '@' + p.name + ' ' + v.slice(end);
-  const pos = start + p.name.length + 2; el.setSelectionRange(pos, pos);
+  const u = p.email.split('@')[0];                 // the username, e.g. manu.tyagi (not the full name)
+  el.value = v.slice(0, start) + '@' + u + ' ' + v.slice(end);
+  const pos = start + u.length + 2; el.setSelectionRange(pos, pos);
   mHide(); el.dispatchEvent(new Event('input', { bubbles: true })); el.focus();
 }
 document.addEventListener('input', e => { if (e.target.matches && e.target.matches('[data-mention]')) mRefresh(e.target); });
@@ -591,25 +612,37 @@ arm($('clrDef'), () => {
   S.defaults = []; S.tasks = S.tasks.filter(t => !(t.date === TODAY && t.def)); save(); render(); toast(n + ' defaults cleared (entries kept)', 'ok', undo);
 });
 
-// ---------- send to Chat (descriptions only) ----------
-let resendOk = false;
-$('send').onclick = async () => {
+// ---------- send to Chat: review and edit the exact message first ----------
+const CHAT_LIMIT = 4096;                       // Google Chat text message limit
+function rvUpdate() {
+  const v = $('rvText').value, over = v.length > CHAT_LIMIT;
+  $('rvCount').textContent = v.length + ' / ' + CHAT_LIMIT; $('rvCount').className = over ? 'over' : '';
+  $('rvSend').disabled = !v.trim() || over;
+}
+function rvClose() { $('review').hidden = true; $('send').focus(); }
+$('send').onclick = () => {
   if (!setupOk()) { showSettings(); return toast('Complete Settings first', 'err'); }
   const list = S.tasks.filter(t => t.date === TODAY && t.desc.trim() && sentFlag(t));
   if (!list.length) return toast('No tasks to send for today', 'err');
-  if (S.lastSent === TODAY && !resendOk) {
-    resendOk = true; setTimeout(() => { resendOk = false; }, 5000);
-    return toast('Already sent today. Tap Send again to resend.', '');
-  }
-  resendOk = false;
-  const text = `*${S.name}* — ${T.fmtDate(TODAY)}\n` + list.map(t => '• ' + t.desc.trim()).join('\n');
-  $('send').disabled = true;
+  $('rvText').value = `*${S.name}* — ${T.fmtDate(TODAY)}\n` + list.map(t => '• ' + T.convertMentions(t.desc.trim(), PEOPLE, 'user')).join('\n');
+  $('rvWarn').hidden = S.lastSent !== TODAY;
+  $('review').hidden = false; rvUpdate(); $('rvText').focus();
+};
+$('rvText').addEventListener('input', rvUpdate);
+$('rvCancel').onclick = rvClose;
+$('review').addEventListener('keydown', e => {
+  if (e.key === 'Escape') rvClose();
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !$('rvSend').disabled) $('rvSend').click();
+});
+$('rvSend').onclick = async () => {
+  const text = $('rvText').value.trim(); if (!text) return;
+  $('rvSend').disabled = true; $('rvSend').textContent = 'Sending…';
   try {
     // text/plain keeps this a simple CORS request (no preflight); Chat still parses the JSON.
     await fetch(S.hook, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify({ text }) });
-    S.lastSent = TODAY; save(); toast(`Sent ${list.length} task(s) to Chat`, 'ok');
+    S.lastSent = TODAY; save(); rvClose(); toast('Message sent to Chat', 'ok');
   } catch (err) { toast('Network error: ' + err.message, 'err'); }
-  $('send').disabled = false;
+  $('rvSend').textContent = 'Send to Chat'; rvUpdate();
 };
 
 $('fhForget').onclick = async () => { await fh.clear(); toast('Next download will ask where to save', 'ok'); };
@@ -651,7 +684,7 @@ $('dl').onclick = async () => {
 
   // 2) build the full month from the saved history (new entries are simply included)
   const ordered = S.tasks.map((t, i) => [t, i]).sort((x, z) => x[0].date.localeCompare(z[0].date) || x[1] - z[1]).map(x => x[0]);
-  const wb = T.buildWorkbook(ExcelJS, { tasks: ordered, days: S.days, ym, people: PEOPLE, mentionMode: 'name' });   // mentions are written as @Full Name
+  const wb = T.buildWorkbook(ExcelJS, { tasks: ordered, days: S.days, ym, people: PEOPLE, mentionMode: 'user' });   // mentions are written as @username
   const blob = new Blob([await wb.xlsx.writeBuffer()], { type: XLSX_MIME });
 
   // 3) write into the same file, or fall back to a normal download
