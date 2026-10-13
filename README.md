@@ -55,6 +55,87 @@ Only the **description** of each task for **today**, under the person's name and
 - **⬇ Timesheet** exports the month shown in the month picker.
 - One row per task, oldest first. Columns: `Date`, `Task context` (the sprint), `Task sub context`, `Description`, `Hours`.
 - Days marked **Leave** appear as a `Leave` row with 0 hours.
+- **Same file every time (Chrome / Edge on a computer):** the first download asks where to save. After that, ⬇ Timesheet rewrites that same file with the full month, including your new entries, instead of creating "(1)" copies. It asks for permission once per browser session. If the file is open in Excel, close it first. If it was moved or deleted, you are asked again. Phones and other browsers fall back to a normal download. The file is regenerated from the page's history, so changes made by hand in Excel are replaced. *Settings → Forget saved file locations* lets you pick a different file.
+
+## @mentions
+
+Type `@` in any description and pick a teammate (the list comes from `team.json`: id, name, email, uuid). The description keeps a readable `@Full Name`, and Chat shows exactly that.
+
+In the Timesheet, Settings → *@ Mentions in the Timesheet* chooses how each mention is written:
+
+| Option | Cell text |
+|---|---|
+| `@username` (default) | `@manu.tyagi` (no domain) |
+| `@Full Name` | `@Manu Tyagi` |
+| Workdiary mention (HTML) | `<p>…<span class="mention" data-id="…" data-email="…">…</span>…</p>`, the same markup Workdiary saves for a manual entry |
+
+When the month has mentions, the workbook gets a second sheet, **Mentions**, listing everyone mentioned with their Id, Name, Email and UUID.
+
+## Adding a new person to the team list
+
+`team.json` is the list behind the `@` picker. Each entry is `{ "id", "name", "email", "uuid" }`. To add someone new, look them up in Workdiary.
+
+### The API
+
+```
+GET https://workdiary-services.org40now.com/external_apis/groups_and_employees.json?query=<part before the @ of the email>
+```
+
+The page's own request also sends these empty parameters (`group_ids=&meta_group_ids=&user_ids=&author_ids=&quality_categories=&quality_types=&task_categories=&task_types=&misc_log_category_ids=&misc_log_type_ids=&misc_log_types=&misc_log_categories=`). Keep them, as the script does.
+
+Headers:
+
+| Header | Value |
+|---|---|
+| `accept` / `content-type` | `application/json` |
+| `authorization` | your Workdiary session token (see below) |
+| `origin` / `referer` | `https://workdiary.org40now.com` (the server only allows that origin) |
+
+Example:
+
+```bash
+curl -s -H "accept: application/json" -H "content-type: application/json"      -H "authorization: $WD_TOKEN" -H "origin: https://workdiary.org40now.com"      "https://workdiary-services.org40now.com/external_apis/groups_and_employees.json?query=manu.tyagi"
+```
+
+Response (trimmed):
+
+```json
+{ "employees": [ { "id": 3067, "full_name": "Manu Tyagi", "email": "manu.tyagi@metacube.com",
+                   "uuid": "690987ff-7020-4230-8347-dd62ea4608f0", "type": "User" } ],
+  "groups": [] }
+```
+
+The search is a loose match, so always pick the employee whose `email` is exactly the one you want.
+
+### Easiest way: the helper script
+
+```bash
+WD_TOKEN=<token> node tools/add-person.js new.person            # domain defaults to metacube.com
+WD_TOKEN=<token> node tools/add-person.js a.b@metacube.com c.d --dry   # preview only, writes nothing
+```
+
+It skips people already listed, adds the exact match, sorts `team.json` by name and tells you what changed. Then commit and push `team.json`.
+
+### Getting the token
+
+Sign in to Workdiary in the browser, open DevTools → Network, click any request to `workdiary-services.org40now.com` and copy the `authorization` request header value.
+
+> **Treat the token like a password.** It is your logged-in session. Never put it in the repo, a chat or a README. It stops working when the session ends, so get a fresh one each time. The script reads it only from the `WD_TOKEN` environment variable.
+
+You can also add a person by hand: copy their `id`, `full_name`, `email` and `uuid` from the response into `team.json`.
+
+## Importing the Timesheet into Gist.ly (Workdiary)
+
+The Timesheet has exactly the columns Gist.ly's importer requires: `Date`, `Description`, `Hours`, `Task context`, `Task sub context` (order does not matter).
+
+- **By hand:** on the Gist.ly *Upload Timesheet* page, choose the file **and select a Group**. Without a Group the rows are saved as **drafts** (`created: 0`).
+- **From the command line:** the page itself cannot upload (the Workdiary API only accepts browser calls from its own site and needs your session token), so use the script:
+
+```bash
+WD_TOKEN=<token> node tools/import-timesheet.js Timesheet_Your_Name_Oct-2026.xlsx --group <groupId>
+```
+
+It sends the same request as the Upload button (`POST /entries/timesheet_import.json`, form fields `file` and `group_id`) and then prints how many entries were created, drafted and rejected. The group id for "CT - Application Management" is `1461`. Get the token the same way as in *Adding a new person*, and never commit it.
 
 ## Sprint calculation
 
@@ -88,6 +169,9 @@ To get a webhook URL: in Google Chat open the space → **Apps & integrations** 
 |---|---|
 | `index.html` | The whole app: UI, storage, Chat sending, drag and drop |
 | `timesheet.js` | Date helpers, sprint calculation, Excel workbook builder |
+| `team.json` | Team directory used by @mentions (id, name, email, uuid) |
+| `tools/add-person.js` | Looks people up in Workdiary and adds them to `team.json` |
+| `tools/import-timesheet.js` | Uploads a Timesheet .xlsx to Gist.ly from the command line |
 | `favicon.svg` | Browser tab icon |
 
 ## Deploy on GitHub Pages

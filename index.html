@@ -121,6 +121,10 @@
   .hrow { display:flex; align-items:center; justify-content:space-between; gap:6px; }
   .hchips { display:flex; gap:3px; min-width:0; }
   .hchips .chip { flex:0 0 30px; width:30px; min-width:0; min-height:42px; padding:0; font-size:13px; }
+  #mpop { position:fixed; z-index:30; background:var(--card); border:1px solid var(--line); border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.25); overflow:hidden; }
+  #mpop button { display:flex; flex-direction:column; align-items:flex-start; width:100%; min-height:44px; padding:6px 12px; border-radius:0; background:transparent; color:var(--text); text-align:left; font-weight:400; }
+  #mpop button.on { background:var(--soft); }
+  #mpop small { color:var(--muted); font-size:12px; }
   .armed { background:var(--danger) !important; color:#fff !important; }
 </style>
 </head>
@@ -141,7 +145,7 @@
 
   <section class="card">
     <form id="form" class="fgrid" autocomplete="off">
-      <textarea id="desc" rows="2" placeholder="What did you work on?" enterkeyhint="done" required></textarea>
+      <textarea id="desc" data-mention rows="2" placeholder="What did you work on? (type @ to mention)" enterkeyhint="done" required></textarea>
       <div class="r3">
         <input id="date" type="date" aria-label="Date">
         <input id="sub" placeholder="Sub task" list="subList" aria-label="Sub task">
@@ -167,7 +171,7 @@
     <div class="dhead"><span>Description</span><span class="c2">Sub</span><span class="c3">Hrs</span><span class="c4" title="Add every weekday">↻</span><span class="c5" title="Send to Chat"><svg class="gi"><use href="#gchat"/></svg></span><span class="c6"></span></div>
     <div id="defs"></div>
     <form id="dForm" class="fgrid" style="margin-top:12px;padding-top:12px;border-top:2px solid var(--line)" autocomplete="off">
-      <input id="dDesc" placeholder="New default, e.g. Participated in Daily Scrum" required>
+      <input id="dDesc" data-mention placeholder="New default, e.g. Participated in Daily Scrum" required>
       <div class="r2d">
         <input id="dSub" placeholder="Sub task">
         <label class="tg daily" title="Add every weekday"><input type="checkbox" id="dOn" checked><span>🔁</span></label>
@@ -203,10 +207,20 @@
       <button id="spApply" type="button" class="ghost" style="width:100%;margin-top:8px">Apply sprint settings</button>
     </div>
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
+      <label for="mMode">@ Mentions in the Timesheet</label>
+      <select id="mMode"><option value="user">@username — e.g. @manu.tyagi</option><option value="name">@Full Name</option><option value="html">Workdiary mention (HTML)</option></select>
+      <small class="m" id="teamNote" style="display:block;margin-top:6px"></small>
+    </div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
       <label>🌴 Add leave day(s) — creates a "Leave" entry with 0 hours</label>
       <div class="grid2"><input id="lvFrom" type="date" aria-label="Leave from"><input id="lvTo" type="date" aria-label="Leave to (optional)"></div>
       <small class="m">"To" is optional. For a range, weekends are skipped.</small>
       <button id="addLeave" type="button" style="width:100%;margin-top:8px">＋ Add leave</button>
+    </div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
+      <label>📄 Timesheet file</label>
+      <small class="m" style="display:block;margin-bottom:6px">In Chrome or Edge on a computer, ⬇ Timesheet updates the same file each time. Use this to choose a different file or folder.</small>
+      <button id="fhForget" type="button" class="ghost" style="width:100%">Forget saved file locations</button>
     </div>
     <div style="display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
       <button id="clrAll" type="button" class="ghost" style="flex:1;color:var(--danger)">🗑 Clear all entries</button>
@@ -236,7 +250,7 @@ const TODAY = T.isoLocal(new Date());
 
 // ---------- state ----------
 function blank() {
-  return { name: '', hook: DEFAULT_HOOK, sprint: { prefix: 'Sprint-', num: 153, day: 2, anchor: '2026-10-06' }, tasks: [], days: {}, mat: [], lastSent: '',
+  return { name: '', hook: DEFAULT_HOOK, sprint: { prefix: 'Sprint-', num: 153, day: 2, anchor: '2026-10-06' }, mentionMode: 'user', tasks: [], days: {}, mat: [], lastSent: '',
            defaults: [{ id: uid(), desc: 'Participated in Daily Scrum', sub: '', hrs: 0.5, on: true, chat: false }] };
 }
 let S = Object.assign(blank(), store.get('v2', null));
@@ -308,6 +322,52 @@ $('spApply').onclick = () => {
   S.tasks.forEach(t => { t.ctx = T.sprintFor(t.date); });       // sprint is always derived from the date
   save(); render(); spPreview(); toast('Sprint settings applied: ' + T.sprintFor(TODAY), 'ok');
 };
+
+// ---------- @mentions (team.json) ----------
+let PEOPLE = [];
+const teamNote = () => { $('teamNote').textContent = PEOPLE.length ? PEOPLE.length + ' people loaded from team.json. Type @ in a description to mention someone.' : 'team.json not loaded, so @ mentions are off.'; };
+fetch('team.json').then(r => r.json()).then(j => { PEOPLE = j.people || []; teamNote(); }).catch(teamNote);
+if (S.mentionMode === 'email') S.mentionMode = 'user';      // older saved setting: the domain is no longer written
+$('mMode').value = S.mentionMode || 'user';
+$('mMode').onchange = () => { S.mentionMode = $('mMode').value; save(); };
+const mpop = document.createElement('div'); mpop.id = 'mpop'; mpop.hidden = true; document.body.appendChild(mpop);
+let mc = null;                                   // { el, start, end, items, idx }
+function mHide() { mpop.hidden = true; mc = null; }
+function mQuery(el) {                            // text after an "@" that starts a word, up to 3 words
+  const pos = el.selectionStart, m = el.value.slice(0, pos).match(/(?:^|\s)@([^\s@]*(?: [^\s@]*){0,2})$/);
+  return m ? { q: m[1], start: pos - m[1].length - 1, end: pos } : null;
+}
+function mRefresh(el) {
+  const k = PEOPLE.length && mQuery(el); if (!k) return mHide();
+  const q = k.q.toLowerCase();
+  const items = PEOPLE.filter(p => p.name.toLowerCase().includes(q) || p.email.toLowerCase().includes(q)).slice(0, 6);
+  if (!items.length) return mHide();
+  mc = { el, start: k.start, end: k.end, items, idx: 0 }; mDraw();
+}
+function mDraw() {
+  mpop.innerHTML = mc.items.map((p, i) => '<button type="button" class="' + (i === mc.idx ? 'on' : '') + '" data-i="' + i + '"><b>' + esc(p.name) + '</b><small>' + esc(p.email) + '</small></button>').join('');
+  const r = mc.el.getBoundingClientRect(), w = Math.min(Math.max(r.width, 260), innerWidth - 16);
+  mpop.style.width = w + 'px'; mpop.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + 'px';
+  if (r.bottom > innerHeight * 0.55) { mpop.style.top = 'auto'; mpop.style.bottom = (innerHeight - r.top + 4) + 'px'; }   // keep clear of the keyboard
+  else { mpop.style.bottom = 'auto'; mpop.style.top = (r.bottom + 4) + 'px'; }
+  mpop.hidden = false;
+}
+function mPick(i) {
+  const { el, start, end, items } = mc, p = items[i], v = el.value;
+  el.value = v.slice(0, start) + '@' + p.name + ' ' + v.slice(end);
+  const pos = start + p.name.length + 2; el.setSelectionRange(pos, pos);
+  mHide(); el.dispatchEvent(new Event('input', { bubbles: true })); el.focus();
+}
+document.addEventListener('input', e => { if (e.target.matches && e.target.matches('[data-mention]')) mRefresh(e.target); });
+document.addEventListener('keydown', e => {      // capture phase, so Enter picks a person instead of adding the task
+  if (!mc || mpop.hidden) return;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); mc.idx = (mc.idx + (e.key === 'ArrowDown' ? 1 : mc.items.length - 1)) % mc.items.length; mDraw(); }
+  else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); e.stopPropagation(); mPick(mc.idx); }
+  else if (e.key === 'Escape') mHide();
+}, true);
+document.addEventListener('focusout', e => { if (e.target.matches && e.target.matches('[data-mention]')) setTimeout(mHide, 200); });
+mpop.addEventListener('mousedown', e => e.preventDefault());       // keep focus in the text box
+mpop.addEventListener('click', e => { const b = e.target.closest('button'); if (b && mc) mPick(+b.dataset.i); });
 
 // ---------- shared helpers ----------
 const MAX_H = 4, DEF_H = 2;      // each task: at most 4 h, default 2 h
@@ -386,7 +446,7 @@ function dayHtml(d) {
 function rowHtml(t) {
   return `<div class="trow ${sentFlag(t) ? '' : 'nochat'}" data-id="${t.id}">
     <span class="grip" title="Drag to move">⠿</span>
-    <input data-f="desc" value="${esc(t.desc)}" placeholder="Description" aria-label="Description">
+    <input data-f="desc" data-mention value="${esc(t.desc)}" placeholder="Description" aria-label="Description">
     <input data-f="sub" value="${esc(t.sub)}" placeholder="Sub" aria-label="Sub task">
     <input data-f="hrs" type="number" inputmode="decimal" step="0.25" min="0" max="4" value="${t.hrs}" aria-label="Hours">
     <button class="x" data-act="del" title="Delete">✕</button>
@@ -482,7 +542,7 @@ function syncToday(d) {         // keep today's list in step when a default is a
 }
 function renderDefs() {
   $('defs').innerHTML = S.defaults.map(d => `<div class="drow" data-id="${d.id}">
-    <input data-k="desc" value="${esc(d.desc)}" placeholder="Description" aria-label="Description">
+    <input data-k="desc" data-mention value="${esc(d.desc)}" placeholder="Description" aria-label="Description">
     <input data-k="sub" value="${esc(d.sub)}" placeholder="Sub" aria-label="Sub task">
     <input data-k="hrs" type="number" inputmode="decimal" step="0.25" min="0" max="4" value="${d.hrs}" aria-label="Hours">
     <label class="tg" title="Add every weekday"><input type="checkbox" data-k="on" ${d.on ? 'checked' : ''}><span>🔁</span></label>
@@ -558,17 +618,61 @@ $('send').onclick = async () => {
   $('send').disabled = false;
 };
 
-// ---------- Excel download ----------
+$('fhForget').onclick = async () => { await fh.clear(); toast('Next download will ask where to save', 'ok'); };
+
+// ---------- Excel download (updates the same file when the browser allows it) ----------
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+// File handles are remembered per month in IndexedDB (Chrome / Edge desktop: File System Access API).
+const fh = {
+  db: () => new Promise((res, rej) => { const r = indexedDB.open('status-files', 1); r.onupgradeneeded = () => r.result.createObjectStore('h'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }),
+  async get(k) { try { const d = await fh.db(); return await new Promise(res => { const q = d.transaction('h').objectStore('h').get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(undefined); }); } catch { return undefined; } },
+  async put(k, v) { try { const d = await fh.db(); await new Promise(res => { const t = d.transaction('h', 'readwrite'); t.objectStore('h').put(v, k); t.oncomplete = res; t.onerror = res; }); } catch {} },
+  async clear() { try { const d = await fh.db(); await new Promise(res => { const t = d.transaction('h', 'readwrite'); t.objectStore('h').clear(); t.oncomplete = res; t.onerror = res; }); } catch {} }
+};
+function plainDownload(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
 $('dl').onclick = async () => {
   if (!window.ExcelJS) return toast('Excel library not loaded (offline?)', 'err');
-  const ym = $('month').value || TODAY.slice(0, 7);
-  const ordered = S.tasks.map((t, i) => [t, i]).sort((a, b) => a[0].date.localeCompare(b[0].date) || a[1] - b[1]).map(x => x[0]);
-  const wb = T.buildWorkbook(ExcelJS, { tasks: ordered, days: S.days, ym });
-  const buf = await wb.xlsx.writeBuffer(), [y, m] = ym.split('-'), a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-  a.download = `Timesheet_${(S.name || 'me').replace(/\s+/g, '_')}_${T.MON[+m - 1]}-${y}.xlsx`;
-  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-  toast('Timesheet downloaded', 'ok');
+  const ym = $('month').value || TODAY.slice(0, 7), [y, m] = ym.split('-');
+  const name = `Timesheet_${(S.name || 'me').replace(/\s+/g, '_')}_${T.MON[+m - 1]}-${y}.xlsx`;
+
+  // 1) pick the target first: the permission / save dialogs need the tap that triggered this click
+  let handle = null, reused = false, note = '';
+  if (window.showSaveFilePicker) {
+    try {
+      handle = await fh.get(ym);
+      if (handle) {
+        let p = await handle.queryPermission({ mode: 'readwrite' });
+        if (p !== 'granted') p = await handle.requestPermission({ mode: 'readwrite' });
+        if (p === 'granted') reused = true; else handle = null;
+      }
+      if (!handle) {
+        handle = await showSaveFilePicker({ suggestedName: name, types: [{ description: 'Excel workbook', accept: { [XLSX_MIME]: ['.xlsx'] } }] });
+        await fh.put(ym, handle);
+      }
+    } catch (e) { if (e.name === 'AbortError') return; handle = null; }      // cancelled -> stop; anything else -> normal download
+  }
+
+  // 2) build the full month from the saved history (new entries are simply included)
+  const ordered = S.tasks.map((t, i) => [t, i]).sort((x, z) => x[0].date.localeCompare(z[0].date) || x[1] - z[1]).map(x => x[0]);
+  const wb = T.buildWorkbook(ExcelJS, { tasks: ordered, days: S.days, ym, people: PEOPLE, mentionMode: S.mentionMode });
+  const blob = new Blob([await wb.xlsx.writeBuffer()], { type: XLSX_MIME });
+
+  // 3) write into the same file, or fall back to a normal download
+  if (handle) {
+    try {
+      const w = await handle.createWritable(); await w.write(blob); await w.close();
+      return toast(reused ? 'Updated ' + handle.name + ' with your latest entries' : 'Saved ' + handle.name + '. Next time this same file is updated.', 'ok');
+    } catch (e) {
+      await fh.put(ym, undefined);                                           // moved, deleted or locked: ask again next time
+      note = e.name === 'NotReadableError' || e.name === 'InvalidStateError' || e.name === 'NoModificationAllowedError'
+        ? ' (the file looks open in Excel. Close it to update it in place.)' : ' (could not update the saved file.)';
+    }
+  }
+  plainDownload(blob, name);
+  toast('Timesheet downloaded' + note, note ? 'err' : 'ok');
 };
 
 render();

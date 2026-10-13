@@ -39,11 +39,40 @@
   const sprintFor = iso => sprintCfg.prefix + sprintNumber(iso);
   const nextSprintStart = iso => fromUtc(utc(iso) + (((sprintCfg.day - dow(iso) + 7) % 7) || 7) * DAY_MS);
 
+  // ---- @mentions: stored in descriptions as "@Full Name"; converted when exporting ----
+  const escRe = x => x.replace(/[.*+?^${}()|[]\]/g, '\$&');
+  const mentionRe = people => people.length
+    ? new RegExp('@(' + people.map(p => p.name).sort((a, b) => b.length - a.length).map(escRe).join('|') + ')(?![\w])', 'gi') : null;
+  const escHtml = x => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const findPerson = (people, name) => people.find(p => p.name.toLowerCase() === name.toLowerCase());
+  function mentionHtml(p, i) {      // same markup the Workdiary editor (Quill mention) produces
+    const n = escHtml(p.name), e = escHtml(p.email);
+    return '<span class="mention" data-index="' + i + '" data-denotation-char="" data-id="' + p.id + '" data-email="' + e + '" data-display_name="' + n +
+      '" data-value="&lt;span title=' + e + '&gt;' + n + '&lt;/span&gt;" data-type="User">﻿<span contenteditable="false"><span class="ql-mention-denotation-char"></span><span title="' + e + '">' + n + '</span></span>﻿</span>';
+  }
+  // mode: 'user' -> @manu.tyagi (no domain) | 'name' -> @Full Name | 'html' -> Workdiary mention markup
+  function convertMentions(text, people, mode) {
+    text = String(text);
+    const re = mentionRe(people || []); if (!re) return text;
+    if (mode !== 'html') return text.replace(re, (m, n) => { const p = findPerson(people, n); return !p ? m : mode === 'name' ? '@' + p.name : '@' + p.email.split('@')[0]; });
+    let out = '', last = 0, i = 0, m;
+    while ((m = re.exec(text))) {
+      const p = findPerson(people, m[1]); if (!p) continue;
+      out += escHtml(text.slice(last, m.index)) + mentionHtml(p, i++); last = m.index + m[0].length;
+    }
+    return i ? '<p>' + out + escHtml(text.slice(last)) + '</p>' : text;
+  }
+  function findMentions(text, people) {
+    const re = mentionRe(people || []), out = []; if (!re) return out;
+    String(text).replace(re, (m, n) => { const p = findPerson(people, n); if (p && !out.includes(p)) out.push(p); return m; });
+    return out;
+  }
+
   const BLUE = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
 
   // Flat layout: Date | Task context | Task sub context | Description | Hours  (one row per task, sorted by date)
   function buildWorkbook(ExcelJS, o) {
-    const { tasks, days, ym } = o;
+    const { tasks, days, ym } = o, people = o.people || [], mode = o.mentionMode || 'user';
     const rows = tasks.filter(t => t.date.startsWith(ym + '-'))
       .map((t, i) => ({ date: t.date, ctx: t.ctx || sprintFor(t.date), sub: t.sub || '', desc: t.desc, hrs: +t.hrs || 0, i }));
     Object.keys(days || {}).forEach(d => {
@@ -69,12 +98,21 @@
     ['Date', 'Task context', 'Task sub context', 'Description', 'Hours'].forEach((h, i) => put(1, i + 1, h, { head: true, h: 'center' }));
     rows.forEach((r, k) => {
       const n = k + 2;
-      put(n, 1, fmtDate(r.date)); put(n, 2, r.ctx); put(n, 3, r.sub); put(n, 4, r.desc); put(n, 5, r.hrs, { h: 'center' });
+      put(n, 1, fmtDate(r.date)); put(n, 2, r.ctx); put(n, 3, r.sub); put(n, 4, convertMentions(r.desc, people, mode)); put(n, 5, r.hrs, { h: 'center' });
     });
     ws.views = [{ state: 'frozen', ySplit: 1 }];
+    // Second sheet: everyone @mentioned this month, with their ids, so an import can match users reliably.
+    const used = [];
+    rows.forEach(r => findMentions(r.desc, people).forEach(p => { if (!used.includes(p)) used.push(p); }));
+    if (used.length) {
+      const us = wb.addWorksheet('Mentions');
+      [10, 28, 38, 40].forEach((w, i) => { us.getColumn(i + 1).width = w; });
+      ['Id', 'Name', 'Email', 'UUID'].forEach((h, i) => { const c = us.getCell(1, i + 1); c.value = h; c.font = { name: 'Times New Roman', size: 12, bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = BLUE; c.border = border; c.alignment = { horizontal: 'center' }; });
+      used.forEach((p, k) => [p.id, p.name, p.email, p.uuid].forEach((v, i) => { const c = us.getCell(k + 2, i + 1); c.value = v; c.font = { name: 'Times New Roman', size: 11 }; c.border = border; }));
+    }
     return wb;
   }
 
-  const api = { DAYN, MON, pad, round2, isoLocal, utc, fromUtc, dow, fmtDate, mondayOf, parseDate, sprintFor, sprintNumber, setSprintConfig, getSprintConfig, nextSprintStart, buildWorkbook };
+  const api = { DAYN, MON, pad, round2, isoLocal, utc, fromUtc, dow, fmtDate, mondayOf, parseDate, sprintFor, sprintNumber, setSprintConfig, getSprintConfig, nextSprintStart, buildWorkbook, convertMentions, findMentions };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Timesheet = api;
 })(typeof window !== 'undefined' ? window : globalThis);

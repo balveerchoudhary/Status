@@ -1,0 +1,143 @@
+{
+  "source": "Workdiary groups_and_employees lookup",
+  "people": [
+    {
+      "id": 2901,
+      "name": "Akash Sharma",
+      "email": "akash.sharma@metacube.com",
+      "uuid": "eb140457-0839-4ab4-9b20-15c30013ca7f"
+    },
+    {
+      "id": 274,
+      "name": "Ashutosh Tripathi",
+      "email": "ashutosh.tripathi@metacube.com",
+      "uuid": "0f07abbd-f2c7-4637-98f3-accd2cea9b2e"
+    },
+    {
+      "id": 2845,
+      "name": "Ayush Agarwal",
+      "email": "ayush.agarwal1@metacube.com",
+      "uuid": "3bcbefe3-5a6d-48bf-98e7-f2d2b6b25871"
+    },
+    {
+      "id": 2942,
+      "name": "Balveer Choudhary",
+      "email": "balveer.choudhary1@metacube.com",
+      "uuid": "bf5274b8-41a8-4585-9b61-89973d3be511"
+    },
+    {
+      "id": 3030,
+      "name": "Bhera Ram",
+      "email": "bhera.ram@metacube.com",
+      "uuid": "ff56fdff-7bcc-43a7-9735-a90c58f18007"
+    },
+    {
+      "id": 1803,
+      "name": "Bhupendra Kumar",
+      "email": "bhupendra.kumar@metacube.com",
+      "uuid": "72324cda-1e66-4f5c-8a0f-4db7f6214ed4"
+    },
+    {
+      "id": 2906,
+      "name": "Dependra Sethiya",
+      "email": "dependra.sethiya@metacube.com",
+      "uuid": "fc57b987-632a-4ffc-a686-b710dde167f8"
+    },
+    {
+      "id": 2125,
+      "name": "Harshit Maloo",
+      "email": "harshit.maloo@metacube.com",
+      "uuid": "74b64be9-655f-4508-b9bb-f6192467c689"
+    },
+    {
+      "id": 2484,
+      "name": "Hemant Kumar Tank",
+      "email": "hemant.tank@metacube.com",
+      "uuid": "f8a733cd-2ea2-49a8-a638-cabcfc684b35"
+    },
+    {
+      "id": 1823,
+      "name": "Ishan Jain",
+      "email": "ishan.jain@metacube.com",
+      "uuid": "a7c3a105-dac5-4785-b6c7-357f6ca1714d"
+    },
+    {
+      "id": 1679,
+      "name": "Karan Singh Solanki",
+      "email": "karan.solanki@metacube.com",
+      "uuid": "1cf12094-5f72-476f-bb50-8f3fc5657062"
+    },
+    {
+      "id": 153,
+      "name": "Manish Sadhwani",
+      "email": "manish.sadhwani@metacube.com",
+      "uuid": "f747909f-dedf-41bd-a10c-d7404fd8f689"
+    },
+    {
+      "id": 2643,
+      "name": "Manisha Saini",
+      "email": "manisha.saini@metacube.com",
+      "uuid": "ad0509d8-17b5-4fe4-a868-5e80ffc75ef7"
+    },
+    {
+      "id": 3067,
+      "name": "Manu Tyagi",
+      "email": "manu.tyagi@metacube.com",
+      "uuid": "690987ff-7020-4230-8347-dd62ea4608f0"
+    },
+    {
+      "id": 216,
+      "name": "Mili Manghnani",
+      "email": "mili.mangnani@metacube.com",
+      "uuid": "143cb6e3-88d6-4d57-a0e7-38404a562d47"
+    },
+    {
+      "id": 2339,
+      "name": "Niharika Gour",
+      "email": "niharika.gour@metacube.com",
+      "uuid": "eaee61eb-590d-4506-b27d-3a6df380d8c7"
+    },
+    {
+      "id": 2846,
+      "name": "Parth Dave",
+      "email": "parth.dave@metacube.com",
+      "uuid": "4d4bcc58-a980-4d67-be80-28d343a2ac40"
+    },
+    {
+      "id": 240,
+      "name": "Prateek Singhal",
+      "email": "prateek.singhal@metacube.com",
+      "uuid": "d3d2b0d5-c10e-48c2-98f7-e1bc950ca964"
+    },
+    {
+      "id": 1960,
+      "name": "Praveen Gupta",
+      "email": "praveen.gupta@metacube.com",
+      "uuid": "7d464c29-f2f7-4dc9-b2c1-39f9592bce03"
+    },
+    {
+      "id": 2731,
+      "name": "Ritik Goderwal",
+      "email": "ritik.goderwal@metacube.com",
+      "uuid": "d95c5452-2e6b-43c3-837c-6fed4fe564a9"
+    },
+    {
+      "id": 2038,
+      "name": "Rupali Jain",
+      "email": "rupali.jain@metacube.com",
+      "uuid": "c5e37878-bdef-4b21-8dde-0f2962a066c0"
+    },
+    {
+      "id": 3099,
+      "name": "Rupesh Prajapat",
+      "email": "rupesh.prajapat1@metacube.com",
+      "uuid": "1310e34e-7446-48c1-9214-3ffed72b007e"
+    },
+    {
+      "id": 2375,
+      "name": "Sharwan Guriya",
+      "email": "sharwan.guriya@metacube.com",
+      "uuid": "2ee7f6c9-7615-4b82-ab69-d527475da426"
+    }
+  ]
+}
