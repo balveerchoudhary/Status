@@ -116,7 +116,22 @@ Sign in to Workdiary in the browser, open DevTools → Network, click any reques
 
 You can also add a person by hand: copy their `id`, `full_name`, `email` and `uuid` from the response into `team.json`.
 
-## Importing into Gist.ly (no extension)
+## Importing into Gist.ly
+
+### Automatic: the user script (recommended)
+
+A script manager (**Tampermonkey** or **Violentmonkey**, one-time install) can run a script by itself when Gist.ly opens. That makes the whole thing one tap:
+
+1. Install Tampermonkey or Violentmonkey for your browser. In Chrome and Edge it may ask you to allow user scripts for the extension; follow its notice.
+2. Open `https://balveerchoudhary.github.io/Status/gistly-import.user.js` (also the link in *Settings → Gist.ly import*). The script manager offers to install it. Install.
+3. Reload Daily Status. Settings shows **✓ Script installed**. (On a first visit without the script, a banner at the top offers steps 1 and 2 with links; **Not now** hides it for good. A web page cannot install a script silently, so the install link is the closest to automatic.)
+4. From now on, **Send to Chat** does both: in its review dialog a tick box "Also import N entries into Gist.ly" is on by default, and after the Chat message is sent the import starts by itself (if the Chat send fails, nothing is imported). **🔗 Gist.ly** is still there for Gist.ly only. Either way: Gist.ly opens in a new tab (sign in with Google if it asks, the script waits), your new entries are imported with your group, the Gist.ly tab closes, and Daily Status shows the result and marks the entries (green edge).
+
+How it works: the Daily Status half of the script hands the file to the Gist.ly half through the script manager's private storage. The Gist.ly half reads your login cookie and calls Gist.ly's own API; Daily Status never sees the token. The Daily Status half answers only messages from its own page. See the comments at the top of `gistly-import.user.js`.
+
+Limits: desktop browsers only (script managers are not available on phones), the Daily Status tab must stay open until the result arrives, and the script depends on Gist.ly's login cookie (`access_token`) and import API.
+
+### Without a script manager: the bookmark
 
 The page cannot call Gist.ly itself: its API only answers requests from `https://workdiary.org40now.com`, and your login is a cookie on that site. So the upload runs **inside the Gist.ly tab**, started by a bookmark, and this page only prepares the file.
 
@@ -182,6 +197,7 @@ To get a webhook URL: in Google Chat open the space → **Apps & integrations** 
 | `timesheet.js` | Date helpers, sprint calculation, Excel workbook builder |
 | `team.json` | Team directory used by @mentions (id, name, email, uuid) |
 | `tools/add-person.js` | Looks people up in Workdiary and adds them to `team.json` |
+| `gistly-import.user.js` | Userscript for Tampermonkey/Violentmonkey: one-tap import into Gist.ly |
 | `tools/import-timesheet.js` | Uploads a Timesheet .xlsx to Gist.ly from the command line |
 | `favicon.svg` | Browser tab icon |
 
