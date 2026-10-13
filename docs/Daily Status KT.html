@@ -220,7 +220,6 @@
           <tr><td>Hours</td><td>Quick picks .25 .5 1 2 3 4, plus − / + in steps of 0.25. Default 2. A task can go up to 8.5 h; above 4 h the page shows a warning (under the hours control, a yellow hours box in the list, and a note when the task is added). Typing more than 8.5 in a list row snaps back to 8.5.</td></tr>
           <tr><td>Entries list</td><td>Grouped by day, newest first, one month at a time (month picker). Today is open, older days collapse. A row is one line: drag handle, description, sub, hours, delete. Delete shows Undo for 5 seconds. Fields edit in place.</td></tr>
           <tr><td>Reorder</td><td>Drag the ⠿ handle within a day. Works by touch and mouse (pointer events, with auto-scroll at the screen edge).</td></tr>
-          <tr><td>Day status</td><td>Each day is Working, Leave or Off/Holiday. Leave adds a "Leave" entry with 0 hours that is never sent to Chat. Leave and Off remove that day's default tasks.</td></tr>
           <tr><td>Daily defaults</td><td>Recurring tasks such as Daily Scrum. Each has two switches: <em>add every weekday</em> and <em>send to Chat</em>. Added to a weekday the first time that day is used; never on weekends.</td></tr>
           <tr><td>@ mentions</td><td>Type <code>@</code> in a description and pick a teammate. The text gets their username, for example <code>@manu.tyagi</code>. The list comes from <code>team.json</code>.</td></tr>
           <tr><td>Send to Chat</td><td>Opens a review dialog with the exact message. Edit, then send. Only today's tasks whose Chat icon is on are included. Limit 4096 characters. A warning shows if today was already sent.</td></tr>
@@ -251,7 +250,6 @@
           <tr><td><code>name</code>, <code>hook</code></td><td>Person's name and the Chat webhook URL. Setup is complete when the name is set and the URL starts with <code>https://chat.googleapis.com/</code>.</td></tr>
           <tr><td><code>tasks[]</code></td><td>Every entry (shape below). Array order is the order within a day.</td></tr>
           <tr><td><code>defaults[]</code></td><td><code>{ id, desc, sub, hrs, on, chat }</code>. Seeded with Daily Scrum, 0.5 h, not sent to Chat.</td></tr>
-          <tr><td><code>days</code></td><td>Map date → <code>leave</code> or <code>off</code>.</td></tr>
           <tr><td><code>mat[]</code></td><td>Dates whose defaults were already added, so they are added once.</td></tr>
           <tr><td><code>sprint</code></td><td><code>{ prefix, num, day, anchor }</code>, see the sprint formula below.</td></tr>
           <tr><td><code>lastSent</code></td><td>Date of the last Chat send, used for the duplicate warning.</td></tr>
@@ -261,7 +259,6 @@
       <pre><code>{ id, date: "2026-10-13", ctx: "Sprint-154", sub: "AVID-50", desc: "...", hrs: 2,
   chat: true,            // false = stays in the Timesheet, never goes to Chat
   def: true, defId,      // only on tasks created from a daily default
-  leave: true,          // only on the Leave entry
   imported: true }       // set once the entry was sent to Gist.ly</code></pre>
     </section>
 
@@ -286,7 +283,7 @@
 
       <h3>Timesheet download</h3>
       <ol class="steps">
-        <li>Take the tasks of the selected month, sorted by date then by list order. Days marked Leave without an entry get a "Leave" row.</li>
+        <li>Take the tasks of the selected month, sorted by date then by list order.</li>
         <li>ExcelJS builds the workbook. Mentions become <code>@username</code>. If anyone was mentioned, a second sheet lists their id, name, email and UUID.</li>
         <li>On Chrome or Edge on a computer the first download asks where to save and remembers the file. After that the same file is overwritten, then read back and checked for size, and the message shows entries, size and time. If that is not possible, a normal download happens.</li>
       </ol>
@@ -410,7 +407,7 @@ WD_TOKEN=&lt;token&gt; node tools/add-person.js new.person         # write team.
         <thead><tr><th>Symptom</th><th>Likely cause</th><th>What to do</th></tr></thead>
         <tbody>
           <tr><td>Name, defaults or entries are gone</td><td>Opened a different address or browser, or site data was cleared</td><td>Open the address you used before. Right after a clear, use the Undo button.</td></tr>
-          <tr><td>Timesheet says "Updated" but the file looks old</td><td>The file is open in Excel, or you are opening another copy</td><td>Close it in Excel and reopen. Compare the size and time in the message with the file's Date modified. Settings → Forget saved file locations to choose a new file.</td></tr>
+          <tr><td>Timesheet says "Updated" but the file looks old</td><td>The file is open in Excel, or you are opening another copy</td><td>Close it in Excel and reopen. Compare the size and time in the message with the file's Date modified.</td></tr>
           <tr><td>Each download makes a "(1)" file</td><td>Browser cannot update files in place</td><td>Use Chrome or Edge on a computer, or accept new files.</td></tr>
           <tr><td>@ list is empty</td><td><code>team.json</code> did not load (opened as a file, or blocked)</td><td>Serve over http or use the Pages URL. Check the Network tab.</td></tr>
           <tr><td>Chat message does not arrive</td><td>Webhook deleted or wrong, space removed, or too many messages at once</td><td>Check in the space. Re-create the webhook and update Settings.</td></tr>
@@ -460,7 +457,7 @@ WD_TOKEN=&lt;token&gt; node tools/add-person.js new.person         # write team.
         <thead><tr><th>Min</th><th>Topic</th><th>Show</th></tr></thead>
         <tbody>
           <tr><td>5</td><td>Why it exists, what it replaces</td><td>The two jobs: Chat update and Timesheet</td></tr>
-          <tr><td>15</td><td>Live demo</td><td>Settings, add tasks, hours, Chat icon off, drag, delete and Undo, daily defaults, leave, @ mention, review dialog and send, Timesheet</td></tr>
+          <tr><td>15</td><td>Live demo</td><td>Settings, add tasks, hours, Chat icon off, drag, delete and Undo, daily defaults, @ mention, review dialog and send, Timesheet</td></tr>
           <tr><td>10</td><td>Architecture</td><td>The diagram above; what runs where; what is stored where</td></tr>
           <tr><td>15</td><td>Code walkthrough</td><td><code>index.html</code> sections in order, then <code>timesheet.js</code></td></tr>
           <tr><td>10</td><td>Rules that surprise people</td><td>Defaults added once per weekday, Chat icon vs Timesheet, sprint formula, in-place file update</td></tr>

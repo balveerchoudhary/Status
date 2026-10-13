@@ -54,13 +54,12 @@
   /* days */
   .day { background:var(--card); border:1px solid var(--line); border-radius:14px; overflow:hidden; }
   .day.today { border-color:var(--primary); box-shadow:0 0 0 2px rgba(68,114,196,.2); }
-  .day.off, .day.wk { background:var(--green); } .day.leave { background:var(--yellow); }
+  .day.wk { background:var(--green); }
   .dayhead { display:flex; flex-wrap:nowrap; gap:8px; align-items:center; padding:10px 12px; overflow:hidden; background:var(--soft); cursor:pointer; user-select:none; }
   .dayhead b { font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; flex:0 1 auto; } .caret { color:var(--muted); width:14px; flex:none; }
   .badge { flex:none; white-space:nowrap; font-size:11px; padding:2px 8px; border-radius:99px; background:var(--card); color:var(--muted); border:1px solid var(--line); }
   .badge.now { background:var(--primary); color:#fff; border-color:transparent; }
   .hrs { margin-left:auto; font-weight:700; white-space:nowrap; flex:none; }
-  .dayhead select { flex:none; width:auto; max-width:92px; min-height:34px; padding:2px 6px; font-size:13px; }
   .empty { padding:16px; color:var(--muted); text-align:center; }
 
   /* one-line task row: grip | description | sub | hours | x */
@@ -227,28 +226,12 @@
       <button id="spApply" type="button" class="ghost" style="width:100%;margin-top:8px">Apply sprint settings</button>
     </div>
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
-      <label>🌴 Add leave day(s) — creates a "Leave" entry with 0 hours</label>
-      <div class="grid2"><input id="lvFrom" type="date" aria-label="Leave from"><input id="lvTo" type="date" aria-label="Leave to (optional)"></div>
-      <small class="m">"To" is optional. For a range, weekends are skipped.</small>
-      <button id="addLeave" type="button" style="width:100%;margin-top:8px">＋ Add leave</button>
-    </div>
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
       <label>🔗 Gist.ly import (no extension needed)</label>
       <ol style="margin:4px 0 8px;padding-left:18px;font-size:13px;line-height:1.55;color:var(--muted)">
         <li>Drag this button to your bookmarks bar: <a id="bm" class="bm" href="#">Import Daily Status</a></li>
         <li>Tap <b>🔗 Gist.ly</b> at the bottom. It opens Gist.ly. Sign in with Google if asked.</li>
         <li>On the Gist.ly tab, click the <b>Import Daily Status</b> bookmark. A small window sends your new entries and closes, and Gist.ly refreshes by itself.</li>
       </ol>
-      <small class="m" style="display:block">Each entry is sent once and gets a green edge. Edits made after importing are not sent again. Your group is found automatically from your Gist.ly login. The bookmark opens the published site (balveerchoudhary.github.io/Status), so it sends the entries saved there.</small>
-      <div class="grid2" style="margin-top:8px">
-        <button id="bmCopy" type="button" class="ghost">Copy script instead</button>
-        <button id="impForget" type="button" class="ghost" style="color:var(--danger)">Forget import marks</button>
-      </div>
-    </div>
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
-      <label>📄 Timesheet file</label>
-      <small class="m" style="display:block;margin-bottom:6px">In Chrome or Edge on a computer, ⬇ Timesheet updates the same file each time. Use this to choose a different file or folder.</small>
-      <button id="fhForget" type="button" class="ghost" style="width:100%">Forget saved file locations</button>
     </div>
     <div style="display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
       <button id="clrAll" type="button" class="ghost" style="flex:1;color:var(--danger)">🗑 Clear all entries</button>
@@ -289,10 +272,11 @@ const TODAY = T.isoLocal(new Date());
 
 // ---------- state ----------
 function blank() {
-  return { name: '', hook: DEFAULT_HOOK, sprint: { prefix: 'Sprint-', num: 153, day: 2, anchor: '2026-10-06' }, tasks: [], days: {}, mat: [], lastSent: '',
+  return { name: '', hook: DEFAULT_HOOK, sprint: { prefix: 'Sprint-', num: 153, day: 2, anchor: '2026-10-06' }, tasks: [], mat: [], lastSent: '',
            defaults: [{ id: uid(), desc: 'Participated in Daily Scrum', sub: '', hrs: 0.5, on: true, chat: false }] };
 }
 let S = Object.assign(blank(), store.get('v2', null));
+delete S.days;                                   // day marks (leave / off) no longer exist; any old ones are dropped
 S.defaults.forEach(d => { d.chat = !!d.chat; if (d.on === undefined) d.on = true; });
 S.tasks.forEach(t => { if (t.chat === undefined) t.chat = t.def ? !!(S.defaults.find(d => d.id === t.defId) || {}).chat : true; });
 const save = () => store.set('v2', S);
@@ -300,7 +284,7 @@ const save = () => store.set('v2', S);
 const snapshotUndo = () => { const snap = JSON.stringify(S); return () => { S = JSON.parse(snap); save(); render(); }; };
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}   // ask the browser not to evict saved data
 T.setSprintConfig(S.sprint);
-const isWorkday = d => ![0, 6].includes(T.dow(d)) && !S.days[d];
+const isWorkday = d => ![0, 6].includes(T.dow(d));
 const defTask = (d, date) => ({ id: uid(), date, ctx: T.sprintFor(date), sub: d.sub || '', desc: d.desc, hrs: d.hrs, def: true, defId: d.id, chat: !!d.chat });
 const sentFlag = t => t.chat !== false;
 
@@ -462,7 +446,6 @@ const sum = list => T.round2(list.reduce((a, t) => a + (+t.hrs || 0), 0));
 function render() {
   const ym = $('month').value || TODAY.slice(0, 7);
   const set = new Set(S.tasks.filter(t => t.date.startsWith(ym)).map(t => t.date));
-  Object.keys(S.days).forEach(d => { if (d.startsWith(ym)) set.add(d); });
   if (TODAY.startsWith(ym)) set.add(TODAY);
   const dates = [...set].sort().reverse();       // newest first here; Excel is oldest first
   const LIMIT = 7, shown = showAll ? dates : dates.slice(0, LIMIT);
@@ -475,14 +458,13 @@ $('month').onchange = () => { showAll = false; render(); };
 $('older').onclick = () => { showAll = true; render(); };
 
 function dayHtml(d) {
-  const list = S.tasks.filter(t => t.date === d), mark = S.days[d] || '';
-  const w = T.dow(d), open = openDays.has(d), sel = v => (mark === v ? ' selected' : '');
-  return `<section class="day ${d === TODAY ? 'today' : ''} ${mark || (w === 0 || w === 6 ? 'wk' : '')}" data-date="${d}">
+  const list = S.tasks.filter(t => t.date === d);
+  const w = T.dow(d), open = openDays.has(d);
+  return `<section class="day ${d === TODAY ? 'today' : ''} ${w === 0 || w === 6 ? 'wk' : ''}" data-date="${d}">
     <div class="dayhead"><span class="caret">${open ? '▾' : '▸'}</span>
       <b>${T.DAYN[w]} ${d.slice(8)}-${T.MON[+d.slice(5, 7) - 1]}<span class="yr">-${d.slice(0, 4)}</span></b>
       ${d === TODAY ? '<span class="badge now">Today</span>' : ''}<span class="badge sprintb">${T.sprintFor(d)}</span>
       <span class="hrs" data-total="${d}"></span>
-      <select class="mark" aria-label="Day status"><option value="">Working</option><option value="leave"${sel('leave')}>Leave</option><option value="off"${sel('off')}>Off / Holiday</option></select>
     </div>
     ${open ? (list.map(rowHtml).join('') || '<div class="empty">No tasks yet</div>') : ''}
     ${open && list.some(t => !sentFlag(t)) ? '<div class="legend"><i></i> not sent to Chat (still in Timesheet)</div>' : ''}
@@ -518,42 +500,17 @@ days.addEventListener('input', e => {
   if (f === 'hrs') { e.target.classList.toggle('warn', t.hrs > WARN_H); e.target.title = t.hrs > WARN_H ? 'More than 4 h on one task' : ''; }
   save(); updateTotals();
 });
-days.addEventListener('change', e => { if (e.target.classList.contains('mark')) setMark(e.target.closest('.day').dataset.date, e.target.value); });
 days.addEventListener('click', e => {
   const head = e.target.closest('.dayhead');
-  if (head && !e.target.closest('select')) {
+  if (head) {
     const d = head.parentNode.dataset.date; openDays.has(d) ? openDays.delete(d) : openDays.add(d); return render();
   }
   const b = e.target.closest('[data-act="del"]'); if (!b) return;
   const i = S.tasks.findIndex(x => x.id === b.closest('.trow').dataset.id), t = S.tasks[i];
   S.tasks.splice(i, 1);
-  if (t.leave && S.days[t.date] === 'leave') { delete S.days[t.date]; S.mat = S.mat.filter(x => x !== t.date); ensureDefaults(t.date); }
   save(); render();
-  toast('Task deleted', '', () => { S.tasks.splice(i, 0, t); if (t.leave) S.days[t.date] = 'leave'; save(); render(); });
+  toast('Task deleted', '', () => { S.tasks.splice(i, 0, t); save(); render(); });
 });
-const leaveTask = d => ({ id: uid(), date: d, ctx: T.sprintFor(d), sub: '', desc: 'Leave', hrs: 0, chat: false, leave: true });
-function setMark(d, v) {
-  S.mat = S.mat.filter(x => x !== d);
-  S.tasks = S.tasks.filter(t => !(t.date === d && t.leave));          // at most one Leave entry per day
-  if (v) { S.days[d] = v; S.tasks = S.tasks.filter(t => !(t.date === d && t.def)); }
-  else { delete S.days[d]; ensureDefaults(d); }
-  if (v === 'leave') S.tasks.push(leaveTask(d));
-  save(); render();
-}
-$('lvFrom').value = TODAY;
-$('addLeave').onclick = () => {
-  const from = $('lvFrom').value, to = $('lvTo').value || from; if (!from) return toast('Pick a leave date', 'err');
-  if (to < from) return toast('"To" is before "From"', 'err');
-  let n = 0;
-  for (let ms = T.utc(from); ms <= T.utc(to) && n < 62; ms += 864e5) {
-    const d = T.fromUtc(ms);
-    if (from !== to && [0, 6].includes(T.dow(d))) continue;
-    S.mat = S.mat.filter(x => x !== d); S.tasks = S.tasks.filter(t => !(t.date === d && (t.leave || t.def)));
-    S.days[d] = 'leave'; S.tasks.push(leaveTask(d)); openDays.add(d); n++;
-  }
-  save(); $('month').value = from.slice(0, 7); showAll = false; render(); $('lvTo').value = '';
-  toast(n + ' leave day' + (n === 1 ? '' : 's') + ' added', 'ok');
-};
 
 // ---------- drag to move (pointer events: touch + mouse) ----------
 let drag = null;
@@ -638,7 +595,7 @@ function arm(btn, action) {          // first tap arms, second tap (within 4s) r
 }
 arm($('clrAll'), () => {
   const undo = snapshotUndo(), n = S.tasks.length;
-  S.tasks = []; S.days = {}; S.mat = [TODAY]; S.lastSent = '';     // today counts as set up, so defaults are not re-added to it
+  S.tasks = []; S.mat = [TODAY]; S.lastSent = '';     // today counts as set up, so defaults are not re-added to it
   save(); openDays.clear(); openDays.add(TODAY); showAll = false; render(); toast(n + ' entries cleared (defaults kept)', 'ok', undo);
 });
 arm($('clrDef'), () => {
@@ -668,7 +625,7 @@ window.addEventListener('message', async e => {
       if (!list.length) return reply({ type: 'ds-empty' });
       const order = new Map(S.tasks.map((t, i) => [t.id, i]));
       const ordered = list.slice().sort((a, b) => a.date.localeCompare(b.date) || order.get(a.id) - order.get(b.id));
-      const wb = T.buildWorkbook(ExcelJS, { tasks: ordered, days: {}, all: true, ym: TODAY.slice(0, 7), people: PEOPLE, mentionMode: 'user' });
+      const wb = T.buildWorkbook(ExcelJS, { tasks: ordered, all: true, ym: TODAY.slice(0, 7), people: PEOPLE, mentionMode: 'user' });
       const buffer = await wb.xlsx.writeBuffer();
       $('bridgeMsg').textContent = 'Sending ' + ordered.length + ' entries to Gist.ly…';
       reply({ type: 'ds-file', name: 'Timesheet_' + S.name.replace(/\s+/g, '_') + '_' + TODAY + '.xlsx', ids: ordered.map(t => t.id), count: ordered.length, buffer });
@@ -743,11 +700,6 @@ const BRIDGE_APP = 'https://balveerchoudhary.github.io/Status/';      // the pub
 const runnerCode = () => '(' + gistlyRunner.toString() + ')(' + JSON.stringify({ app: BRIDGE_APP, origin: new URL(BRIDGE_APP).origin }) + ');';
 $('bm').href = 'javascript:' + encodeURIComponent(runnerCode());
 $('bm').onclick = e => { e.preventDefault(); toast('Drag this button to your bookmarks bar', ''); };
-$('bmCopy').onclick = async () => {
-  try { await navigator.clipboard.writeText(runnerCode()); toast('Script copied. Paste it into the browser console on the Gist.ly tab.', 'ok'); }
-  catch { prompt('Copy this script:', runnerCode()); }
-};
-arm($('impForget'), () => { S.tasks.forEach(t => { delete t.imported; }); save(); render(); toast('Import marks cleared', 'ok'); });
 $('gl').onclick = () => {
   window.open(GISTLY_ORIGIN + '/', '_blank');
   toast('Sign in with Google if asked, then click the "Import Daily Status" bookmark on that tab.', '');
@@ -786,7 +738,6 @@ $('rvSend').onclick = async () => {
   $('rvSend').textContent = 'Send to Chat'; rvUpdate();
 };
 
-$('fhForget').onclick = async () => { await fh.clear(); toast('Next download will ask where to save', 'ok'); };
 
 // ---------- Excel download (updates the same file when the browser allows it) ----------
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -825,7 +776,7 @@ $('dl').onclick = async () => {
 
   // 2) build the full month from the saved history (new entries are simply included)
   const ordered = S.tasks.map((t, i) => [t, i]).sort((x, z) => x[0].date.localeCompare(z[0].date) || x[1] - z[1]).map(x => x[0]);
-  const wb = T.buildWorkbook(ExcelJS, { tasks: ordered, days: S.days, ym, people: PEOPLE, mentionMode: 'user' });   // mentions are written as @username
+  const wb = T.buildWorkbook(ExcelJS, { tasks: ordered, ym, people: PEOPLE, mentionMode: 'user' });   // mentions are written as @username
   const blob = new Blob([await wb.xlsx.writeBuffer()], { type: XLSX_MIME });
 
   // 3) write into the same file, or fall back to a normal download

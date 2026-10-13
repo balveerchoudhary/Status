@@ -34,7 +34,6 @@ No backend and no database. It is plain HTML/JS hosted on GitHub Pages. Everythi
 | Repeat work | Pick an old sub task (e.g. `AVID-50`) and the last description and hours are filled in. |
 | Recurring meetings | **Daily defaults** (e.g. Daily Scrum) are added to every weekday automatically. Each default can be set to *add every weekday* and/or *send to Chat*. |
 | Reorder | Drag the ⠿ handle (works by touch and mouse) to reorder tasks within a day. |
-| Leave | Settings → *Add leave day(s)* creates a `Leave` entry with 0 hours (a date range skips weekends). |
 | Sprint name | Calculated from the date. Settings lets you set the name, today's number and the weekday it changes. |
 | Mistakes | Deleting a task shows an **Undo** for 5 seconds. Entries are editable in place. |
 
@@ -56,8 +55,7 @@ Only the **description** of each task for **today**, under the person's name and
 
 - **⬇ Timesheet** exports the month shown in the month picker.
 - One row per task, oldest first. Columns: `Date`, `Task context` (the sprint), `Task sub context`, `Description`, `Hours`.
-- Days marked **Leave** appear as a `Leave` row with 0 hours.
-- **Same file every time (Chrome / Edge on a computer):** the first download asks where to save. After that, ⬇ Timesheet rewrites that same file with the full month, including your new entries, instead of creating "(1)" copies. It asks for permission once per browser session. If the file is open in Excel, close it first. If it was moved or deleted, you are asked again. Phones and other browsers fall back to a normal download. The file is regenerated from the page's history, so changes made by hand in Excel are replaced. *Settings → Forget saved file locations* lets you pick a different file.
+- **Same file every time (Chrome / Edge on a computer):** the first download asks where to save. After that, ⬇ Timesheet rewrites that same file with the full month, including your new entries, instead of creating "(1)" copies. It asks for permission once per browser session. If the file is open in Excel, close it first. If it was moved or deleted, you are asked again. Phones and other browsers fall back to a normal download. The file is regenerated from the page's history, so changes made by hand in Excel are replaced.
 
 ## @mentions
 
@@ -124,7 +122,7 @@ The page cannot call Gist.ly itself: its API only answers requests from `https:/
 
 The file has the columns Gist.ly's importer requires (`Date`, `Description`, `Hours`, `Task context`, `Task sub context`). Gist.ly also needs a **Group** for the rows to be saved as entries (otherwise they become **drafts**). The bookmark finds it for you, so there is nothing to set.
 
-One-time setup, in *Settings → Gist.ly import*: drag **Import Daily Status** to your bookmarks bar. (No bookmarks bar? Use **Copy script instead** and paste it into the browser console on the Gist.ly tab.)
+One-time setup, in *Settings → Gist.ly import*: drag **Import Daily Status** to your bookmarks bar.
 
 Each time:
 
@@ -134,7 +132,7 @@ Each time:
 
 Details worth knowing:
 
-- Only entries **not yet imported** are sent, so nothing is duplicated. Edits made after importing are not re-sent. *Settings → Forget import marks* resets this.
+- Only entries **not yet imported** are sent, so nothing is duplicated. Edits made after importing are not re-sent.
 - If Gist.ly rejects any row, nothing is marked as imported and you see the counts.
 - Safety: this page answers only messages that come from `https://workdiary.org40now.com`, sends the file only to that origin, and never sees your Gist.ly token. The bookmark reads the token on the Gist.ly page and uses it only for the two Gist.ly API calls.
 - The bookmark always opens the published site, `https://balveerchoudhary.github.io/Status/`, and sends the entries saved **in that site** (browser data is per address). A bookmark made earlier from another address must be replaced.
@@ -206,4 +204,4 @@ Repo **Settings → Pages → Deploy from a branch → `main` / root**. The site
 4. Drag a task to reorder; delete one and tap **Undo**.
 5. Press **Send today to Chat** and show the message in the space.
 6. Press **Timesheet** and open the Excel file.
-7. Show Daily defaults, Add leave day(s) and the sprint settings.
+7. Show Daily defaults and the sprint settings.

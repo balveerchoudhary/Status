@@ -73,13 +73,9 @@
 
   // Flat layout: Date | Task context | Task sub context | Description | Hours  (one row per task, sorted by date)
   function buildWorkbook(ExcelJS, o) {
-    const { tasks, days, ym } = o, people = o.people || [], mode = o.mentionMode || 'user';
+    const { tasks, ym } = o, people = o.people || [], mode = o.mentionMode || 'user';
     const rows = tasks.filter(t => o.all || t.date.startsWith(ym + '-'))
       .map((t, i) => ({ date: t.date, ctx: t.ctx || sprintFor(t.date), sub: t.sub || '', desc: t.desc, hrs: +t.hrs || 0, i }));
-    Object.keys(days || {}).forEach(d => {
-      if (!o.all && days[d] === 'leave' && d.startsWith(ym + '-') && !rows.some(r => r.date === d))
-        rows.push({ date: d, ctx: sprintFor(d), sub: '', desc: 'Leave', hrs: 0, i: -1 });
-    });
     rows.sort((x, y) => x.date.localeCompare(y.date) || x.i - y.i);
 
     const wb = new ExcelJS.Workbook();
