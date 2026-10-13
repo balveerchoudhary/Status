@@ -142,8 +142,7 @@
   .trow.imported:not(.nochat) { border-left-color:#22c55e; }
   #bridge { position:fixed; inset:0; z-index:80; background:var(--bg); display:grid; place-items:center; text-align:center; padding:24px; }
   #bridge[hidden] { display:none; }
-  #autoPrompt { background:var(--soft); border-radius:12px; padding:10px 12px; font-size:14px; line-height:1.6; }
-  #autoPrompt[hidden], #rvGlRow[hidden] { display:none; }
+  #rvGlRow[hidden] { display:none; }
   .armed { background:var(--danger) !important; color:#fff !important; }
 </style>
 </head>
@@ -162,7 +161,6 @@
 <main>
   <div id="notice" hidden>👋 First time here? <a href="#setBox" id="goSet">Complete Settings ↓</a> (your name, one time).</div>
 
-  <div id="autoPrompt" hidden>⚡ <b>One-tap Gist.ly import.</b> Set it up once: <a href="https://www.tampermonkey.net/" target="_blank" rel="noopener">1. Get Tampermonkey</a> · <a id="apInstall" href="gistly-import.user.js" target="_blank" rel="noopener">2. Install the script</a>, then reload this page. <button id="apNo" type="button" class="ghost" style="min-height:32px;padding:0 10px;margin-left:6px">Not now</button></div>
 
   <section class="card">
     <form id="form" class="fgrid" autocomplete="off">
@@ -231,8 +229,6 @@
     </div>
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
       <label>🔗 Gist.ly import</label>
-      <p style="margin:4px 0 8px;font-size:13px;line-height:1.55;color:var(--muted)"><b>Automatic:</b> install Tampermonkey (or Violentmonkey) once, then <a href="gistly-import.user.js">install the Daily Status script</a>. After that, <b>🔗 Gist.ly</b> opens Gist.ly, imports your new entries, closes it and shows the result here. <span id="autoState"></span></p>
-      <p style="margin:0 0 4px;font-size:13px;color:var(--muted)"><b>Without it:</b> use the bookmark.</p>
       <ol style="margin:4px 0 8px;padding-left:18px;font-size:13px;line-height:1.55;color:var(--muted)">
         <li>Drag this button to your bookmarks bar: <a id="bm" class="bm" href="#">Import Daily Status</a></li>
         <li>Tap <b>🔗 Gist.ly</b> at the bottom. It opens Gist.ly. Sign in with Google if asked.</li>
@@ -661,30 +657,6 @@ window.addEventListener('message', async e => {
   }
 });
 
-// Messages from the auto-import user script, which runs inside this same page (see gistly-import.user.js).
-let HAS_IMPORTER = false, autoAt = 0;
-const toBase64 = buf => {
-  const u = new Uint8Array(buf); let s = '';
-  for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
-  return btoa(s);
-};
-window.addEventListener('message', e => {
-  if (e.source !== window || e.origin !== location.origin || !e.data || typeof e.data.type !== 'string') return;
-  const d = e.data;
-  if (d.type === 'ds-ext-hello') { HAS_IMPORTER = true; $('autoState').textContent = '✓ Script installed'; $('autoPrompt').hidden = true; }
-  if (d.type === 'ds-ext-status' && d.message) { if (d.stage === 'error') autoAt = 0; toast(d.message, d.stage === 'error' ? 'err' : ''); }
-  if (d.type === 'ds-ext-done') {
-    autoAt = 0;
-    if (d.error) return toast('Gist.ly import failed: ' + d.error, 'err');
-    const n = markImported(d.ids || []), s = d.summary || {};
-    toast(entries(n) + ' imported into Gist.ly' + (d.group ? ' (' + d.group + ')' : '') +
-      (s.drafted ? '. ' + s.drafted + ' saved as drafts' : '') + (s.rejected ? '. ' + s.rejected + ' rejected, none marked' : ''), (s.drafted || s.rejected) ? '' : 'ok');
-  }
-});
-window.postMessage({ type: 'ds-ext-ping' }, location.origin);       // the script answers with ds-ext-hello if it is installed
-// A page cannot install a script by itself, so on a visit where the script is missing we offer it (until it is installed or dismissed).
-setTimeout(() => { if (!HAS_IMPORTER && !S.autoPromptDismissed) $('autoPrompt').hidden = false; }, 1500);
-$('apNo').onclick = () => { S.autoPromptDismissed = true; save(); $('autoPrompt').hidden = true; };
 
 // Runs on the Gist.ly tab. It must stay self-contained: it is turned into a bookmark with Function.toString().
 function gistlyRunner(cfg) {
@@ -746,19 +718,8 @@ const BRIDGE_APP = 'https://balveerchoudhary.github.io/Status/';      // the pub
 const runnerCode = () => '(' + gistlyRunner.toString() + ')(' + JSON.stringify({ app: BRIDGE_APP, origin: new URL(BRIDGE_APP).origin }) + ');';
 $('bm').href = 'javascript:' + encodeURIComponent(runnerCode());
 $('bm').onclick = e => { e.preventDefault(); toast('Drag this button to your bookmarks bar', ''); };
-async function startAutoImport() {                // hands the new entries to the user script, which does the rest
-  if (Date.now() - autoAt < 120000) return toast('An import is already running', '');
-  autoAt = Date.now();
-  const f = await buildImportFile();
-  if (f.error) { autoAt = 0; return toast(f.error, 'err'); }
-  if (f.empty) { autoAt = 0; return toast('Nothing new to import', ''); }
-  window.postMessage({ type: 'ds-ext-start', name: f.name, ids: f.ids, count: f.count, b64: toBase64(f.buffer) }, location.origin);
-}
-$('gl').onclick = () => {
-  if (HAS_IMPORTER) return startAutoImport();                   // script installed: one tap does everything
-  window.open(GISTLY_ORIGIN + '/', '_blank');
-  toast('Sign in with Google if asked, then click the "Import Daily Status" bookmark on that tab.', '');
-};
+const GISTLY_HINT = 'Gist.ly is open. Sign in with Google if asked, then click the "Import Daily Status" bookmark on that tab.';
+$('gl').onclick = () => { window.open(GISTLY_ORIGIN + '/', '_blank'); toast(GISTLY_HINT, ''); };
 
 // ---------- keep this tab in step with the import window ----------
 // The Gist.ly bookmark opens this page in a small window; that window saves "imported" marks and closes. A browser tell
@@ -789,9 +750,9 @@ $('send').onclick = () => {
   if (!list.length) return toast('No tasks to send for today', 'err');
   $('rvText').value = `*${S.name}* — ${T.fmtDate(TODAY)}\n` + list.map(t => '• ' + T.convertMentions(t.desc.trim(), PEOPLE, 'user')).join('\n');
   $('rvWarn').hidden = S.lastSent !== TODAY;
-  const pend = pendingImport().length;                           // offer the Gist.ly import too, when the script is installed
-  $('rvGlRow').hidden = !(HAS_IMPORTER && pend);
-  $('rvGlText').textContent = 'Also import ' + entries(pend) + ' into Gist.ly';
+  const pend = pendingImport().length;                           // offer to open Gist.ly too, when entries are waiting
+  $('rvGlRow').hidden = !pend;
+  $('rvGlText').textContent = 'Also open Gist.ly (' + entries(pend) + ' waiting to import)';
   $('rvGl').checked = true;
   $('review').hidden = false; rvUpdate(); $('rvText').focus();
 };
@@ -803,14 +764,25 @@ $('review').addEventListener('keydown', e => {
 });
 $('rvSend').onclick = async () => {
   const text = $('rvText').value.trim(); if (!text) return;
+  // Open the Gist.ly tab right now, inside this click, so the browser's pop-up blocker allows it; it is pointed at Gist.ly
+  // only if the Chat message goes through, and closed again if it does not.
+  const wantGistly = !$('rvGlRow').hidden && $('rvGl').checked;
+  const gw = wantGistly ? window.open('', '_blank') : null;
+  if (gw) { try { gw.opener = null; } catch (err) {} }
   $('rvSend').disabled = true; $('rvSend').textContent = 'Sending…';
   try {
     // text/plain keeps this a simple CORS request (no preflight); Chat still parses the JSON.
     await fetch(S.hook, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify({ text }) });
-    const alsoGistly = !$('rvGlRow').hidden && $('rvGl').checked;
     S.lastSent = TODAY; save(); rvClose();
-    if (alsoGistly) { toast('Sent to Chat. Importing into Gist.ly…', 'ok'); startAutoImport(); } else toast('Message sent to Chat', 'ok');
-  } catch (err) { toast('Network error: ' + err.message, 'err'); }
+    if (wantGistly) {
+      if (gw) gw.location.href = GISTLY_ORIGIN + '/';
+      else window.open(GISTLY_ORIGIN + '/', '_blank');            // pop-up was blocked: try once more
+      toast('Sent to Chat. ' + GISTLY_HINT, 'ok');
+    } else toast('Message sent to Chat', 'ok');
+  } catch (err) {
+    if (gw) { try { gw.close(); } catch (e2) {} }
+    toast('Network error: ' + err.message, 'err');
+  }
   $('rvSend').textContent = 'Send to Chat'; rvUpdate();
 };
 
