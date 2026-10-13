@@ -61,13 +61,7 @@ Only the **description** of each task for **today**, under the person's name and
 
 Type `@` in any description and pick a teammate (the list comes from `team.json`: id, name, email, uuid). The description keeps a readable `@Full Name`, and Chat shows exactly that.
 
-In the Timesheet, Settings → *@ Mentions in the Timesheet* chooses how each mention is written:
-
-| Option | Cell text |
-|---|---|
-| `@username` (default) | `@manu.tyagi` (no domain) |
-| `@Full Name` | `@Manu Tyagi` |
-| Workdiary mention (HTML) | `<p>…<span class="mention" data-id="…" data-email="…">…</span>…</p>`, the same markup Workdiary saves for a manual entry |
+In the Timesheet, a mention is written as `@Full Name`, for example `@Manu Tyagi`. (To change the format, edit the `mentionMode` value in the Timesheet download code in `index.html`: `'name'`, `'user'` for `@manu.tyagi`, or `'html'` for Workdiary mention markup.)
 
 When the month has mentions, the workbook gets a second sheet, **Mentions**, listing everyone mentioned with their Id, Name, Email and UUID.
 
@@ -124,18 +118,9 @@ Sign in to Workdiary in the browser, open DevTools → Network, click any reques
 
 You can also add a person by hand: copy their `id`, `full_name`, `email` and `uuid` from the response into `team.json`.
 
-## Importing the Timesheet into Gist.ly (Workdiary)
+## Importing the Timesheet into Gist.ly
 
-The Timesheet has exactly the columns Gist.ly's importer requires: `Date`, `Description`, `Hours`, `Task context`, `Task sub context` (order does not matter).
-
-- **By hand:** on the Gist.ly *Upload Timesheet* page, choose the file **and select a Group**. Without a Group the rows are saved as **drafts** (`created: 0`).
-- **From the command line:** the page itself cannot upload (the Workdiary API only accepts browser calls from its own site and needs your session token), so use the script:
-
-```bash
-WD_TOKEN=<token> node tools/import-timesheet.js Timesheet_Your_Name_Oct-2026.xlsx --group <groupId>
-```
-
-It sends the same request as the Upload button (`POST /entries/timesheet_import.json`, form fields `file` and `group_id`) and then prints how many entries were created, drafted and rejected. The group id for "CT - Application Management" is `1461`. Get the token the same way as in *Adding a new person*, and never commit it.
+Upload the downloaded file by hand on Gist.ly's *Upload Timesheet* page. It has the columns that page requires (`Date`, `Description`, `Hours`, `Task context`, `Task sub context`). Remember to select a Group on that page before uploading, otherwise Gist.ly saves the rows as drafts.
 
 ## Sprint calculation
 
@@ -171,7 +156,6 @@ To get a webhook URL: in Google Chat open the space → **Apps & integrations** 
 | `timesheet.js` | Date helpers, sprint calculation, Excel workbook builder |
 | `team.json` | Team directory used by @mentions (id, name, email, uuid) |
 | `tools/add-person.js` | Looks people up in Workdiary and adds them to `team.json` |
-| `tools/import-timesheet.js` | Uploads a Timesheet .xlsx to Gist.ly from the command line |
 | `favicon.svg` | Browser tab icon |
 
 ## Deploy on GitHub Pages

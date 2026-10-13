@@ -91,7 +91,7 @@
   details[open] summary { margin-bottom:8px; }
 
   .dock { position:fixed; left:0; right:0; bottom:0; display:flex; gap:8px; padding:10px 12px calc(10px + env(safe-area-inset-bottom)); background:var(--card); border-top:1px solid var(--line); z-index:5; max-width:760px; margin:0 auto; }
-  .dock button { min-height:50px; } #dl { flex:0 0 auto; padding:0 18px; } #send { flex:1; font-size:16px; }
+  .dock button { min-height:50px; } #dl { flex:0 0 auto; padding:0 14px; } #send { flex:1; font-size:16px; }
   #toast { position:fixed; left:50%; bottom:calc(84px + env(safe-area-inset-bottom)); transform:translate(-50%,20px); background:#111827; color:#fff; padding:10px 14px; border-radius:12px; display:flex; gap:12px; align-items:center; opacity:0; pointer-events:none; transition:.2s; z-index:9; max-width:92vw; font-size:14px; }
   #toast.show { opacity:1; transform:translate(-50%,0); pointer-events:auto; }
   #toast.ok { background:#166534; } #toast.err { background:#b91c1c; }
@@ -125,7 +125,7 @@
   #mpop button { display:flex; flex-direction:column; align-items:flex-start; width:100%; min-height:44px; padding:6px 12px; border-radius:0; background:transparent; color:var(--text); text-align:left; font-weight:400; }
   #mpop button.on { background:var(--soft); }
   #mpop small { color:var(--muted); font-size:12px; }
-  .armed { background:var(--danger) !important; color:#fff !important; }
+    .armed { background:var(--danger) !important; color:#fff !important; }
 </style>
 </head>
 <body>
@@ -207,11 +207,6 @@
       <button id="spApply" type="button" class="ghost" style="width:100%;margin-top:8px">Apply sprint settings</button>
     </div>
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
-      <label for="mMode">@ Mentions in the Timesheet</label>
-      <select id="mMode"><option value="user">@username — e.g. @manu.tyagi</option><option value="name">@Full Name</option><option value="html">Workdiary mention (HTML)</option></select>
-      <small class="m" id="teamNote" style="display:block;margin-top:6px"></small>
-    </div>
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
       <label>🌴 Add leave day(s) — creates a "Leave" entry with 0 hours</label>
       <div class="grid2"><input id="lvFrom" type="date" aria-label="Leave from"><input id="lvTo" type="date" aria-label="Leave to (optional)"></div>
       <small class="m">"To" is optional. For a range, weekends are skipped.</small>
@@ -250,13 +245,16 @@ const TODAY = T.isoLocal(new Date());
 
 // ---------- state ----------
 function blank() {
-  return { name: '', hook: DEFAULT_HOOK, sprint: { prefix: 'Sprint-', num: 153, day: 2, anchor: '2026-10-06' }, mentionMode: 'user', tasks: [], days: {}, mat: [], lastSent: '',
+  return { name: '', hook: DEFAULT_HOOK, sprint: { prefix: 'Sprint-', num: 153, day: 2, anchor: '2026-10-06' }, tasks: [], days: {}, mat: [], lastSent: '',
            defaults: [{ id: uid(), desc: 'Participated in Daily Scrum', sub: '', hrs: 0.5, on: true, chat: false }] };
 }
 let S = Object.assign(blank(), store.get('v2', null));
 S.defaults.forEach(d => { d.chat = !!d.chat; if (d.on === undefined) d.on = true; });
 S.tasks.forEach(t => { if (t.chat === undefined) t.chat = t.def ? !!(S.defaults.find(d => d.id === t.defId) || {}).chat : true; });
 const save = () => store.set('v2', S);
+// Undo for destructive actions: restore the whole saved state from a snapshot taken just before.
+const snapshotUndo = () => { const snap = JSON.stringify(S); return () => { S = JSON.parse(snap); save(); render(); }; };
+try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}   // ask the browser not to evict saved data
 T.setSprintConfig(S.sprint);
 const isWorkday = d => ![0, 6].includes(T.dow(d)) && !S.days[d];
 const defTask = (d, date) => ({ id: uid(), date, ctx: T.sprintFor(date), sub: d.sub || '', desc: d.desc, hrs: d.hrs, def: true, defId: d.id, chat: !!d.chat });
@@ -286,7 +284,7 @@ let tt;
 function toast(msg, cls, undo) {
   $('tmsg').textContent = msg; $('toast').className = 'show ' + (cls || '');
   $('tact').hidden = !undo; $('tact').onclick = () => { undo && undo(); $('toast').className = ''; };
-  clearTimeout(tt); tt = setTimeout(() => { $('toast').className = ''; }, undo ? 5000 : 2200);
+  clearTimeout(tt); tt = setTimeout(() => { $('toast').className = ''; }, (undo || msg.length > 40) ? 5000 : 2200);
 }
 
 // ---------- settings (one-time, bottom of page) ----------
@@ -325,11 +323,7 @@ $('spApply').onclick = () => {
 
 // ---------- @mentions (team.json) ----------
 let PEOPLE = [];
-const teamNote = () => { $('teamNote').textContent = PEOPLE.length ? PEOPLE.length + ' people loaded from team.json. Type @ in a description to mention someone.' : 'team.json not loaded, so @ mentions are off.'; };
-fetch('team.json').then(r => r.json()).then(j => { PEOPLE = j.people || []; teamNote(); }).catch(teamNote);
-if (S.mentionMode === 'email') S.mentionMode = 'user';      // older saved setting: the domain is no longer written
-$('mMode').value = S.mentionMode || 'user';
-$('mMode').onchange = () => { S.mentionMode = $('mMode').value; save(); };
+fetch('team.json').then(r => r.json()).then(j => { PEOPLE = j.people || []; }).catch(() => {});
 const mpop = document.createElement('div'); mpop.id = 'mpop'; mpop.hidden = true; document.body.appendChild(mpop);
 let mc = null;                                   // { el, start, end, items, idx }
 function mHide() { mpop.hidden = true; mc = null; }
@@ -460,7 +454,7 @@ function updateTotals() {
   const ym = $('month').value || TODAY.slice(0, 7);
   $('mtotal').textContent = sum(S.tasks.filter(t => t.date.startsWith(ym))) + ' h';
   const n = S.tasks.filter(t => t.date === TODAY && t.desc.trim() && sentFlag(t)).length;
-  $('send').innerHTML = `<svg class="gi"><use href="#gchat"/></svg> Send today to Chat (${n})`;
+  $('send').innerHTML = `<svg class="gi"><use href="#gchat"/></svg> Send to Chat (${n})`;
 }
 const days = $('days');
 days.addEventListener('input', e => {
@@ -564,10 +558,10 @@ $('defs').addEventListener('change', e => {
 });
 $('defs').addEventListener('click', e => {
   const b = e.target.closest('[data-act="del"]'); if (!b) return;
-  const id = b.closest('.drow').dataset.id;
+  const id = b.closest('.drow').dataset.id, undo = snapshotUndo();
   S.defaults = S.defaults.filter(d => d.id !== id);
   S.tasks = S.tasks.filter(t => !(t.date === TODAY && t.defId === id));
-  save(); render();
+  save(); render(); toast('Default deleted', '', undo);
 });
 $('dForm').onsubmit = e => {
   e.preventDefault();
@@ -580,21 +574,21 @@ $('dForm').onsubmit = e => {
 
 // ---------- clear actions ----------
 function arm(btn, action) {          // first tap arms, second tap (within 4s) runs; works where confirm() is blocked
-  const label = btn.textContent; let timer;
+  const label = btn.textContent; let timer, armedAt = 0;
   const reset = () => { clearTimeout(timer); btn.classList.remove('armed'); btn.textContent = label; btn.dataset.armed = ''; };
   btn.onclick = () => {
-    if (btn.dataset.armed) { reset(); action(); return; }
-    btn.dataset.armed = '1'; btn.classList.add('armed'); btn.textContent = 'Tap again to confirm'; timer = setTimeout(reset, 4000);
+    if (btn.dataset.armed) { if (Date.now() - armedAt < 700) return; reset(); action(); return; }   // ignore an accidental double tap
+    armedAt = Date.now(); btn.dataset.armed = '1'; btn.classList.add('armed'); btn.textContent = 'Tap again to confirm'; timer = setTimeout(reset, 4000);
   };
 }
 arm($('clrAll'), () => {
-  const n = S.tasks.length;
+  const undo = snapshotUndo(), n = S.tasks.length;
   S.tasks = []; S.days = {}; S.mat = [TODAY]; S.lastSent = '';     // today counts as set up, so defaults are not re-added to it
-  save(); openDays.clear(); openDays.add(TODAY); showAll = false; render(); toast(n + ' entries cleared (defaults kept)', 'ok');
+  save(); openDays.clear(); openDays.add(TODAY); showAll = false; render(); toast(n + ' entries cleared (defaults kept)', 'ok', undo);
 });
 arm($('clrDef'), () => {
-  const n = S.defaults.length;
-  S.defaults = []; S.tasks = S.tasks.filter(t => !(t.date === TODAY && t.def)); save(); render(); toast(n + ' defaults cleared (entries kept)', 'ok');
+  const undo = snapshotUndo(), n = S.defaults.length;
+  S.defaults = []; S.tasks = S.tasks.filter(t => !(t.date === TODAY && t.def)); save(); render(); toast(n + ' defaults cleared (entries kept)', 'ok', undo);
 });
 
 // ---------- send to Chat (descriptions only) ----------
@@ -657,18 +651,22 @@ $('dl').onclick = async () => {
 
   // 2) build the full month from the saved history (new entries are simply included)
   const ordered = S.tasks.map((t, i) => [t, i]).sort((x, z) => x[0].date.localeCompare(z[0].date) || x[1] - z[1]).map(x => x[0]);
-  const wb = T.buildWorkbook(ExcelJS, { tasks: ordered, days: S.days, ym, people: PEOPLE, mentionMode: S.mentionMode });
+  const wb = T.buildWorkbook(ExcelJS, { tasks: ordered, days: S.days, ym, people: PEOPLE, mentionMode: 'name' });   // mentions are written as @Full Name
   const blob = new Blob([await wb.xlsx.writeBuffer()], { type: XLSX_MIME });
 
   // 3) write into the same file, or fall back to a normal download
   if (handle) {
     try {
       const w = await handle.createWritable(); await w.write(blob); await w.close();
-      return toast(reused ? 'Updated ' + handle.name + ' with your latest entries' : 'Saved ' + handle.name + '. Next time this same file is updated.', 'ok');
+      const f = await handle.getFile();                                      // read it back: never trust the write blindly
+      if (f.size !== blob.size) throw new Error('written size ' + f.size + ' does not match ' + blob.size);
+      const when = new Date(f.lastModified).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const count = ordered.filter(t => t.date.startsWith(ym + '-')).length;
+      return toast((reused ? 'Updated ' : 'Saved ') + handle.name + ' · ' + count + ' entries · ' + Math.round(f.size / 1024) + ' KB · ' + when, 'ok');
     } catch (e) {
       await fh.put(ym, undefined);                                           // moved, deleted or locked: ask again next time
       note = e.name === 'NotReadableError' || e.name === 'InvalidStateError' || e.name === 'NoModificationAllowedError'
-        ? ' (the file looks open in Excel. Close it to update it in place.)' : ' (could not update the saved file.)';
+        ? ' (the file looks open in Excel. Close it to update it in place.)' : ' (could not update the saved file: ' + e.name + ' ' + e.message + ')';
     }
   }
   plainDownload(blob, name);
