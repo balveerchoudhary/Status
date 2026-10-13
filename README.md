@@ -28,7 +28,7 @@ No backend and no database. It is plain HTML/JS hosted on GitHub Pages. Everythi
 
 | Need | What the page does |
 |---|---|
-| Log a task fast | Type description, tap an hours quick-pick (.25 .5 1 2 3 4), tap **Add**. Hours default to 2 and are capped at 4 per task. |
+| Log a task fast | Type description, tap an hours quick-pick (.25 .5 1 2 3 4), tap **Add**. Hours default to 2. A task can go up to 8.5 h, and the page warns when one task is over 4 h. |
 | Repeat work | Pick an old sub task (e.g. `AVID-50`) and the last description and hours are filled in. |
 | Recurring meetings | **Daily defaults** (e.g. Daily Scrum) are added to every weekday automatically. Each default can be set to *add every weekday* and/or *send to Chat*. |
 | Reorder | Drag the ⠿ handle (works by touch and mouse) to reorder tasks within a day. |
@@ -165,7 +165,7 @@ Repo **Settings → Pages → Deploy from a branch → `main` / root**. The site
 - Data is per browser/device, not shared or synced.
 - Delivery to Chat cannot be confirmed from the page.
 - The Chat webhook allows about 1 message per second per space; the app sends one message per press.
-- A task is capped at 4 hours.
+- A task is capped at 8.5 hours, with a warning above 4 hours.
 
 ## 5-minute demo script for the team
 

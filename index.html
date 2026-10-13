@@ -136,6 +136,9 @@
   .rv-meta { display:flex; justify-content:space-between; gap:8px; font-size:12px; color:var(--muted); }
   .rv-meta .over { color:var(--danger); font-weight:700; }
   .rv-actions { display:flex; gap:8px; } .rv-actions button { flex:1; }
+  .hwarn { background:var(--yellow); color:var(--text); border-radius:8px; padding:6px 10px; font-size:13px; }
+  .hwarn[hidden] { display:none; }
+  .trow [data-f=hrs].warn, .drow [data-k=hrs].warn { background:var(--yellow); border-color:var(--amber); }
   .armed { background:var(--danger) !important; color:#fff !important; }
 </style>
 </head>
@@ -166,6 +169,7 @@
         <div class="hchips" id="hChips"><button type="button" class="chip" data-h="0.25">.25</button><button type="button" class="chip" data-h="0.5">.5</button><button type="button" class="chip" data-h="1">1</button><button type="button" class="chip" data-h="2">2</button><button type="button" class="chip" data-h="3">3</button><button type="button" class="chip" data-h="4">4</button></div>
         <div class="step"><button type="button" id="hMinus" aria-label="Less">−</button><input id="hrs" value="2" readonly aria-label="Hours"><button type="button" id="hPlus" aria-label="More">+</button></div>
       </div>
+      <div class="hwarn" id="hrsWarn" hidden>⚠ More than 4 h on one task. Consider splitting it.</div>
       <button type="submit">＋ Add task</button>
       <div id="hint"></div>
     </form>
@@ -192,6 +196,7 @@
         <div class="hchips" id="dChips"><button type="button" class="chip" data-h="0.25">.25</button><button type="button" class="chip" data-h="0.5">.5</button><button type="button" class="chip" data-h="1">1</button><button type="button" class="chip" data-h="2">2</button><button type="button" class="chip" data-h="3">3</button><button type="button" class="chip" data-h="4">4</button></div>
         <div class="step"><button type="button" id="dMinus" aria-label="Less">−</button><input id="dHrs" value="2" readonly aria-label="Hours"><button type="button" id="dPlus" aria-label="More">+</button></div>
       </div>
+      <div class="hwarn" id="dHrsWarn" hidden>⚠ More than 4 h on one task. Consider splitting it.</div>
       <button type="submit">＋ Add default</button>
     </form>
   </details>
@@ -385,11 +390,15 @@ mpop.addEventListener('mousedown', e => e.preventDefault());       // keep focus
 mpop.addEventListener('click', e => { const b = e.target.closest('button'); if (b && mc) mPick(+b.dataset.i); });
 
 // ---------- shared helpers ----------
-const MAX_H = 4, DEF_H = 2;      // each task: at most 4 h, default 2 h
+const MAX_H = 8.5, WARN_H = 4, DEF_H = 2;      // each task: at most 8.5 h (warning above 4 h), default 2 h
 const clampH = v => Math.min(MAX_H, Math.max(0, parseFloat(v) || 0));
-function wireHours(chipsId, minusId, plusId, inputId) {   // quick picks + ±0.25 stepper (0.25 … 24)
+function wireHours(chipsId, minusId, plusId, inputId) {   // quick picks + ±0.25 stepper (0.25 … MAX_H)
   const inp = $(inputId), box = $(chipsId);
-  const sync = () => box.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', +c.dataset.h === parseFloat(inp.value)));
+  const warn = $(inputId + 'Warn');
+  const sync = () => {
+    box.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', +c.dataset.h === parseFloat(inp.value)));
+    if (warn) warn.hidden = !(parseFloat(inp.value) > WARN_H);
+  };
   const step = d => { inp.value = Math.min(MAX_H, Math.max(0.25, T.round2((parseFloat(inp.value) || 0) + d))); sync(); };
   box.onclick = e => { const c = e.target.closest('.chip'); if (c) { inp.value = c.dataset.h; sync(); } };
   $(minusId).onclick = () => step(-0.25); $(plusId).onclick = () => step(0.25);
@@ -420,9 +429,11 @@ $('form').onsubmit = e => {
   const date = $('date').value || TODAY, desc = $('desc').value.trim(); if (!desc) return;
   ensureDefaults(date);
   S.tasks.push({ id: uid(), date, ctx: T.sprintFor(date), sub: $('sub').value.trim(), desc, hrs: clampH($('hrs').value), chat: $('chat').checked });
+  const over = S.tasks[S.tasks.length - 1].hrs > WARN_H;
   save(); $('sub').value = ''; $('desc').value = ''; $('chat').checked = true; $('hrs').value = DEF_H; $('hrs').dispatchEvent(new Event('input')); autosize($('desc'));
   openDays.add(date); $('month').value = date.slice(0, 7);
-  render(); $('desc').focus(); toast('Task added', 'ok');
+  render(); $('desc').focus();
+  if (over) toast('Added. Note: more than 4 h on one task. Consider splitting it.', ''); else toast('Task added', 'ok');
 };
 
 // ---------- history ----------
@@ -463,7 +474,7 @@ function rowHtml(t) {
     <span class="grip" title="Drag to move">⠿</span>
     <input data-f="desc" data-mention value="${esc(t.desc)}" placeholder="Description" aria-label="Description">
     <input data-f="sub" value="${esc(t.sub)}" placeholder="Sub" aria-label="Sub task">
-    <input data-f="hrs" type="number" inputmode="decimal" step="0.25" min="0" max="4" value="${t.hrs}" aria-label="Hours">
+    <input data-f="hrs" type="number" inputmode="decimal" step="0.25" min="0" max="8.5" value="${t.hrs}" class="${t.hrs > WARN_H ? 'warn' : ''}" title="${t.hrs > WARN_H ? 'More than 4 h on one task' : ''}" aria-label="Hours">
     <button class="x" data-act="del" title="Delete">✕</button>
   </div>`;
 }
@@ -483,6 +494,7 @@ days.addEventListener('input', e => {
   const t = S.tasks.find(x => x.id === row.dataset.id); if (!t) return;
   t[f] = f === 'hrs' ? clampH(e.target.value) : e.target.value;
   if (f === 'hrs' && parseFloat(e.target.value) > MAX_H) e.target.value = MAX_H;
+  if (f === 'hrs') { e.target.classList.toggle('warn', t.hrs > WARN_H); e.target.title = t.hrs > WARN_H ? 'More than 4 h on one task' : ''; }
   save(); updateTotals();
 });
 days.addEventListener('change', e => { if (e.target.classList.contains('mark')) setMark(e.target.closest('.day').dataset.date, e.target.value); });
@@ -559,7 +571,7 @@ function renderDefs() {
   $('defs').innerHTML = S.defaults.map(d => `<div class="drow" data-id="${d.id}">
     <input data-k="desc" data-mention value="${esc(d.desc)}" placeholder="Description" aria-label="Description">
     <input data-k="sub" value="${esc(d.sub)}" placeholder="Sub" aria-label="Sub task">
-    <input data-k="hrs" type="number" inputmode="decimal" step="0.25" min="0" max="4" value="${d.hrs}" aria-label="Hours">
+    <input data-k="hrs" type="number" inputmode="decimal" step="0.25" min="0" max="8.5" value="${d.hrs}" class="${d.hrs > WARN_H ? 'warn' : ''}" title="${d.hrs > WARN_H ? 'More than 4 h on one task' : ''}" aria-label="Hours">
     <label class="tg" title="Add every weekday"><input type="checkbox" data-k="on" ${d.on ? 'checked' : ''}><span>🔁</span></label>
     <label class="tg chat" title="Send to Chat"><input type="checkbox" data-k="chat" ${d.chat ? 'checked' : ''}><span><svg class="gi"><use href="#gchat"/></svg></span></label>
     <button class="x" type="button" data-act="del" title="Delete">✕</button>
@@ -570,6 +582,7 @@ $('defs').addEventListener('input', e => {
   const d = S.defaults.find(x => x.id === row.dataset.id);
   d[k] = k === 'hrs' ? clampH(e.target.value) : e.target.value;
   if (k === 'hrs' && parseFloat(e.target.value) > MAX_H) e.target.value = MAX_H;
+  if (k === 'hrs') { e.target.classList.toggle('warn', d.hrs > WARN_H); e.target.title = d.hrs > WARN_H ? 'More than 4 h on one task' : ''; }
   save();
 });
 $('defs').addEventListener('change', e => {
