@@ -128,7 +128,7 @@ Each time:
 
 1. Tap **🔗 Gist.ly** (bottom bar). It opens Gist.ly; sign in with Google if asked. The button shows how many entries are waiting.
 2. On the Gist.ly tab, click the **Import Daily Status** bookmark.
-3. A small window opens, builds a file from the entries not yet imported (dates up to today), uploads it with your **group id** (found from your Gist.ly login), shows the result, marks those entries as imported (green edge), closes, and **reloads the Gist.ly tab** so the new entries show.
+3. A small window opens, builds a file from the entries not yet imported (dates up to today), uploads it with your **group id** (found from your Gist.ly login), shows the result, marks those entries as imported (green edge), closes, and **reloads the Gist.ly tab** so the new entries show. Your main Daily Status tab updates by itself too: it shows a message and the green edges on the imported entries.
 
 Details worth knowing:
 

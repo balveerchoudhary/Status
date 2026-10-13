@@ -705,6 +705,21 @@ $('gl').onclick = () => {
   toast('Sign in with Google if asked, then click the "Import Daily Status" bookmark on that tab.', '');
 };
 
+// ---------- keep this tab in step with the import window ----------
+// The Gist.ly bookmark opens this page in a small window; that window saves "imported" marks and closes. A browser tell
+// every OTHER tab of this page about it through the storage event, so this tab picks the new data up and shows it.
+// Without this, this tab would keep old data and its next save would wipe the marks (and the next import would duplicate).
+window.addEventListener('storage', e => {
+  if (e.key !== 'v2' || !e.newValue) return;
+  let next; try { next = Object.assign(blank(), JSON.parse(e.newValue)); } catch (err) { return; }
+  const before = S.tasks.filter(t => t.imported).length;
+  S = next; delete S.days; T.setSprintConfig(S.sprint);
+  $('name').value = S.name; $('hook').value = S.hook; who();
+  render();
+  const gained = S.tasks.filter(t => t.imported).length - before;
+  if (gained > 0) toast(gained + ' entr' + (gained === 1 ? 'y' : 'ies') + ' imported into Gist.ly', 'ok');
+});
+
 // ---------- send to Chat: review and edit the exact message first ----------
 const CHAT_LIMIT = 4096;                       // Google Chat text message limit
 function rvUpdate() {
